@@ -1,0 +1,116 @@
+using OsuInstaFadeSkinGenerator.Models;
+
+namespace OsuInstaFadeSkinGenerator.Services;
+
+public static class GenerationInputService
+{
+    public static ColourSelection? GetPrimaryComboColour(SkinConfig config)
+    {
+        var comboColour = config.ComboColours
+            .OrderBy(colour => colour.Index)
+            .FirstOrDefault();
+
+        return comboColour == null
+            ? null
+            : new ColourSelection(comboColour.R, comboColour.G, comboColour.B);
+    }
+
+    public static SkinFolderValidationResult ValidateSkinFolder(string? inputPath, bool requireValue)
+    {
+        var trimmedPath = inputPath?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedPath))
+        {
+            return requireValue
+                ? SkinFolderValidationResult.Invalid("Enter a valid osu! skin folder path.")
+                : SkinFolderValidationResult.Empty;
+        }
+
+        try
+        {
+            var skinFolderPath = Path.GetFullPath(trimmedPath);
+            if (!Directory.Exists(skinFolderPath))
+            {
+                return SkinFolderValidationResult.Invalid("Skin folder path does not exist.");
+            }
+
+            var skinIniPath = Path.Combine(skinFolderPath, "skin.ini");
+            if (!File.Exists(skinIniPath))
+            {
+                return SkinFolderValidationResult.Invalid("Selected folder is not an osu! skin folder because skin.ini is missing.");
+            }
+
+            return SkinFolderValidationResult.Valid(skinFolderPath, skinIniPath);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return SkinFolderValidationResult.Invalid("Skin folder path is not a valid folder path.");
+        }
+    }
+
+    public static ColourValidationResult ValidateColourInput(
+        string? redText,
+        string? greenText,
+        string? blueText,
+        string? hexText,
+        bool requireValue)
+    {
+        var hasAnyValue = !string.IsNullOrWhiteSpace(redText)
+            || !string.IsNullOrWhiteSpace(greenText)
+            || !string.IsNullOrWhiteSpace(blueText)
+            || !string.IsNullOrWhiteSpace(hexText);
+
+        if (!hasAnyValue)
+        {
+            return requireValue
+                ? ColourValidationResult.Invalid("Enter a combo colour in RGB or hex.")
+                : ColourValidationResult.Empty;
+        }
+
+        // First, try parsing hex if provided.
+        if (!string.IsNullOrWhiteSpace(hexText) && TryParseHex(hexText, out var hexColour))
+        {
+            return ColourValidationResult.Valid(hexColour);
+        }
+
+        // Fall back to RGB parsing.
+        if (TryParseRgb(redText, greenText, blueText, out var rgbColour))
+        {
+            return ColourValidationResult.Valid(rgbColour);
+        }
+
+        return ColourValidationResult.Invalid("Colour must be specified as RGB (0 to 255) or hex (#RRGGBB).");
+    }
+
+    public static bool TryParseRgb(string? redText, string? greenText, string? blueText, out ColourSelection colour)
+    {
+        colour = default;
+
+        return byte.TryParse(redText, out var red)
+            && byte.TryParse(greenText, out var green)
+            && byte.TryParse(blueText, out var blue)
+            && SetColour(red, green, blue, out colour);
+    }
+
+    public static bool TryParseHex(string? input, out ColourSelection colour)
+    {
+        colour = default;
+
+        var hex = input?.Trim() ?? string.Empty;
+        if (!hex.StartsWith('#'))
+        {
+            hex = "#" + hex;
+        }
+
+        return hex.Length == 7
+            && byte.TryParse(hex[1..3], System.Globalization.NumberStyles.HexNumber, null, out var red)
+            && byte.TryParse(hex[3..5], System.Globalization.NumberStyles.HexNumber, null, out var green)
+            && byte.TryParse(hex[5..7], System.Globalization.NumberStyles.HexNumber, null, out var blue)
+            && SetColour(red, green, blue, out colour);
+    }
+
+    private static bool SetColour(byte red, byte green, byte blue, out ColourSelection colour)
+    {
+        colour = new ColourSelection(red, green, blue);
+        return true;
+    }
+}

@@ -1,0 +1,46 @@
+<Window
+    x:Class="OsuInstaFadeSkinGenerator.Views.Dialogs.ConfirmGenerationWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="Confirm Generation"
+    Width="430"
+    Height="220"
+    CanResize="False"
+    WindowStartupLocation="CenterOwner"
+    SystemDecorations="Full"
+    mc:Ignorable="d">
+
+    <StackPanel Margin="20" Spacing="0">
+        <TextBlock
+            Classes="window-title"
+            Margin="0,0,0,10"
+            FontWeight="Bold"
+            Text="This action modifies the selected skin." />
+
+        <TextBlock
+            Classes="subtle"
+            Margin="0,0,0,20"
+            TextWrapping="Wrap"
+            Text="Generating insta-fade files will overwrite skin assets. Running it multiple times on the same skin can cause broken files, overwrite existing backup files (if selected) and make the skin unplayable. Do you want to continue?" />
+
+        <StackPanel
+            HorizontalAlignment="Right"
+            Orientation="Horizontal"
+            Spacing="10">
+            <Button
+                Classes="secondary"
+                Click="CancelButton_Click"
+                Content="Cancel"
+                MinWidth="100"
+                ToolTip.Tip="Close this warning and leave the selected skin files unchanged." />
+            <Button
+                Click="ProceedButton_Click"
+                Classes="primary"
+                Content="Proceed"
+                MinWidth="100"
+                ToolTip.Tip="Continue and overwrite the selected hitcircle assets with the generated insta-fade version." />
+        </StackPanel>
+    </StackPanel>
+</Window>
