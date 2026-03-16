@@ -73,6 +73,53 @@
             <Setter Property="BorderBrush" Value="{StaticResource OsuPinkBrush}" />
         </Style>
 
+        <Style Selector="TextBox.log-output">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        </Style>
+
+        <Style Selector="TextBox.log-output:focus">
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+
+        <Style Selector="Button.utility-icon-button">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource OsuMutedTextBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Opacity" Value="0.72" />
+        </Style>
+
+        <Style Selector="Button.utility-icon-button:pointerover">
+            <Setter Property="Background" Value="#332A2233" />
+            <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.utility-icon-button:focus">
+            <Setter Property="Background" Value="#222A2233" />
+            <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.utility-icon-button:pressed">
+            <Setter Property="Background" Value="#442A2233" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+
+        <Style Selector="Button.utility-icon-button:disabled">
+            <Setter Property="Opacity" Value="0.35" />
+        </Style>
+
         <Style Selector="Button">
             <Setter Property="Background" Value="{StaticResource OsuIndigoBrush}" />
             <Setter Property="Foreground" Value="White" />

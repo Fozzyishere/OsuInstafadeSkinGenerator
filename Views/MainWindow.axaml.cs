@@ -14,6 +14,7 @@ public partial class MainWindow : Window
 {
     private const string SkinFolderValidationKey = "SkinFolder";
     private const string ColourValidationKey = "Colour";
+    private const string ClipboardValidationKey = "Clipboard";
 
     // recursion safeguard
     private readonly LogState logState = new();
@@ -386,6 +387,31 @@ public partial class MainWindow : Window
         this.UpdateValidationUi();
     }
 
+    private async void CopyLogsButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!this.logState.HasEntries)
+        {
+            return;
+        }
+
+        var clipboard = this.Clipboard;
+        if (clipboard == null)
+        {
+            this.SetValidationError(ClipboardValidationKey, "Clipboard is not available on this system.", writeToLog: false);
+            return;
+        }
+
+        try
+        {
+            await clipboard.SetTextAsync(this.logState.DisplayText);
+            this.ClearValidationError(ClipboardValidationKey);
+        }
+        catch (Exception ex)
+        {
+            this.SetValidationError(ClipboardValidationKey, $"Failed to copy logs: {ex.Message}", writeToLog: false);
+        }
+    }
+
     private void Log(string message)
     {
         this.logState.Append(message);
@@ -465,9 +491,14 @@ public partial class MainWindow : Window
 
     private void UpdateLogUi()
     {
-        if (this.LogTextBlock != null)
+        if (this.LogTextBox != null)
         {
-            this.LogTextBlock.Text = this.logState.DisplayText;
+            this.LogTextBox.Text = this.logState.DisplayText;
+        }
+
+        if (this.CopyLogsButton != null)
+        {
+            this.CopyLogsButton.IsEnabled = this.logState.HasEntries;
         }
     }
 }
