@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace OsuInstaFadeSkinGenerator.Services;
@@ -38,7 +39,7 @@ public static class InstaFadeGenerator
             }
 
             progress?.Invoke(0.0, "Reading skin.ini...");
-            var config = SkinIniParser.Parse(skinIniPath);
+            var config = ParseSkinIniOrThrow(skinIniPath);
             var prefix = config.HitCirclePrefix;
 
             progress?.Invoke(0.02, $"  Skin: {config.Name} (v{config.Version}) by {config.Author}");
@@ -89,7 +90,7 @@ public static class InstaFadeGenerator
                 overlapWidth = GetDefaultWidth(skinFolder, prefix, "@2x") / 2;
             }
 
-            SkinIniParser.UpdateSkinIni(
+            UpdateSkinIniOrThrow(
                 skinIniPath,
                 options.ComboR,
                 options.ComboG,
@@ -99,9 +100,13 @@ public static class InstaFadeGenerator
             progress?.Invoke(1.0, "Done!");
             return new GenerationResult(true, "Insta-fade hitcircles generated successfully.");
         }
+        catch (GenerationFailureException ex)
+        {
+            return new GenerationResult(false, ex.Message);
+        }
         catch (Exception ex)
         {
-            return new GenerationResult(false, $"Generation failed: {ex.Message}");
+            return new GenerationResult(false, $"Generation failed unexpectedly: {ex.Message}");
         }
     }
 
@@ -134,10 +139,10 @@ public static class InstaFadeGenerator
             return new GenerationResult(false, $"hitcircle{suffix}.png not found.");
         }
 
-        using var hitcircle = Image.Load<Rgba32>(hitcirclePath);
+        using var hitcircle = LoadImageOrThrow(hitcirclePath);
 
         using var overlay = File.Exists(overlayPath)
-            ? Image.Load<Rgba32>(overlayPath)
+            ? LoadImageOrThrow(overlayPath)
             : ImageProcessor.CreateBlank(hitcircle.Width, hitcircle.Height);
 
         var progressSpan = progressRange.End - progressRange.Start;
@@ -163,16 +168,16 @@ public static class InstaFadeGenerator
 
             if (File.Exists(numberPath))
             {
-                using var numberImage = Image.Load<Rgba32>(numberPath);
+                using var numberImage = LoadImageOrThrow(numberPath);
                 using var result = config.HitCircleOverlayAboveNumber
                     ? ImageProcessor.ComposeNumberBetween(upscaledHitcircle, numberImage, upscaledOverlay)
                     : ImageProcessor.PlaceNumberOnCircle(merged, numberImage);
-                result.SaveAsPng(numberPath);
+                SaveImageAsPngOrThrow(result, numberPath);
             }
             else
             {
                 using var clone = merged.Clone();
-                clone.SaveAsPng(numberPath);
+                SaveImageAsPngOrThrow(clone, numberPath);
             }
         }
 
@@ -182,22 +187,22 @@ public static class InstaFadeGenerator
             $"Creating blank {Path.GetFileName(blankPath)}...");
         EnsureParentDirectory(blankPath);
         using var blank = ImageProcessor.CreateBlank(merged.Width, merged.Height);
-        blank.SaveAsPng(blankPath);
+        SaveImageAsPngOrThrow(blank, blankPath);
 
         progress?.Invoke(progressRange.Start + (progressSpan * 0.95), $"Replacing originals {suffix}...");
 
         if (options.EnableTripleStacking)
         {
-            overlay.SaveAsPng(hitcirclePath);
-            overlay.SaveAsPng(overlayPath);
+            SaveImageAsPngOrThrow(overlay, hitcirclePath);
+            SaveImageAsPngOrThrow(overlay, overlayPath);
         }
         else
         {
             using var transparentHc = ImageProcessor.CreateBlank(hitcircle.Width, hitcircle.Height);
-            transparentHc.SaveAsPng(hitcirclePath);
+            SaveImageAsPngOrThrow(transparentHc, hitcirclePath);
 
             using var transparentOverlay = ImageProcessor.CreateBlank(overlay.Width, overlay.Height);
-            transparentOverlay.SaveAsPng(overlayPath);
+            SaveImageAsPngOrThrow(transparentOverlay, overlayPath);
         }
 
         return new GenerationResult(true, $"Variant {suffix} processed successfully.");
@@ -211,21 +216,21 @@ public static class InstaFadeGenerator
             return 0;
         }
 
-        using var img = Image.Load<Rgba32>(path);
+        using var img = LoadImageOrThrow(path);
         return img.Width;
     }
 
     private static void CreateBackup(string skinFolder, string prefix)
     {
         var backupDir = Path.Combine(skinFolder, BackupFolderName);
-        Directory.CreateDirectory(backupDir);
+        CreateDirectoryOrThrow(backupDir, $"create backup folder {GetDisplayPath(backupDir)}");
 
         foreach (var name in OriginalAssetNames)
         {
             var src = Path.Combine(skinFolder, name);
             if (File.Exists(src))
             {
-                File.Copy(src, Path.Combine(backupDir, name), overwrite: true);
+                CopyFileOrThrow(src, Path.Combine(backupDir, name));
             }
         }
 
@@ -240,14 +245,14 @@ public static class InstaFadeGenerator
                 }
 
                 var destName = Path.GetFileName(src);
-                File.Copy(src, Path.Combine(backupDir, destName), overwrite: true);
+                CopyFileOrThrow(src, Path.Combine(backupDir, destName));
             }
         }
 
         var iniSrc = Path.Combine(skinFolder, SkinIniFileName);
         if (File.Exists(iniSrc))
         {
-            File.Copy(iniSrc, Path.Combine(backupDir, SkinIniFileName), overwrite: true);
+            CopyFileOrThrow(iniSrc, Path.Combine(backupDir, SkinIniFileName));
         }
     }
 
@@ -256,8 +261,173 @@ public static class InstaFadeGenerator
         var directory = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(directory))
         {
-            Directory.CreateDirectory(directory);
+            CreateDirectoryOrThrow(directory, $"create folder for {GetDisplayPath(filePath)}");
         }
+    }
+
+    private static Models.SkinConfig ParseSkinIniOrThrow(string skinIniPath)
+    {
+        try
+        {
+            return SkinIniParser.Parse(skinIniPath);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new GenerationFailureException("Failed to read skin.ini. Access was denied.", ex);
+        }
+        catch (PathTooLongException ex)
+        {
+            throw new GenerationFailureException("Failed to read skin.ini. The path is too long.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new GenerationFailureException("Failed to read skin.ini. The file is in use or unreadable.", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new GenerationFailureException("Failed to read skin.ini. The file path is invalid.", ex);
+        }
+    }
+
+    private static void UpdateSkinIniOrThrow(string skinIniPath, byte comboR, byte comboG, byte comboB, int hitCircleOverlap)
+    {
+        try
+        {
+            SkinIniParser.UpdateSkinIni(skinIniPath, comboR, comboG, comboB, hitCircleOverlap);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new GenerationFailureException("Failed to update skin.ini. Access was denied.", ex);
+        }
+        catch (PathTooLongException ex)
+        {
+            throw new GenerationFailureException("Failed to update skin.ini. The path is too long.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new GenerationFailureException("Failed to update skin.ini. The file is in use or could not be written.", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new GenerationFailureException("Failed to update skin.ini. The file path is invalid.", ex);
+        }
+    }
+
+    private static Image<Rgba32> LoadImageOrThrow(string path)
+    {
+        try
+        {
+            return Image.Load<Rgba32>(path);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new GenerationFailureException($"Failed to load {GetDisplayPath(path)}. Access was denied.", ex);
+        }
+        catch (PathTooLongException ex)
+        {
+            throw new GenerationFailureException($"Failed to load {GetDisplayPath(path)}. The path is too long.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new GenerationFailureException($"Failed to load {GetDisplayPath(path)}. The file is in use or unreadable.", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new GenerationFailureException($"Failed to load {GetDisplayPath(path)}. The file path is invalid.", ex);
+        }
+        catch (UnknownImageFormatException ex)
+        {
+            throw new GenerationFailureException($"Failed to load {GetDisplayPath(path)}. The image format is not supported.", ex);
+        }
+        catch (InvalidImageContentException ex)
+        {
+            throw new GenerationFailureException($"Failed to load {GetDisplayPath(path)}. The image data is invalid or corrupted.", ex);
+        }
+        catch (NotSupportedException ex)
+        {
+            throw new GenerationFailureException($"Failed to load {GetDisplayPath(path)}. The image format is not supported.", ex);
+        }
+    }
+
+    private static void SaveImageAsPngOrThrow(Image<Rgba32> image, string path)
+    {
+        try
+        {
+            image.SaveAsPng(path);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new GenerationFailureException($"Failed to write {GetDisplayPath(path)}. Access was denied.", ex);
+        }
+        catch (PathTooLongException ex)
+        {
+            throw new GenerationFailureException($"Failed to write {GetDisplayPath(path)}. The path is too long.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new GenerationFailureException($"Failed to write {GetDisplayPath(path)}. The file is in use or could not be written.", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new GenerationFailureException($"Failed to write {GetDisplayPath(path)}. The file path is invalid.", ex);
+        }
+    }
+
+    private static void CopyFileOrThrow(string sourcePath, string destinationPath)
+    {
+        try
+        {
+            File.Copy(sourcePath, destinationPath, overwrite: true);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new GenerationFailureException($"Failed to back up {GetDisplayPath(sourcePath)}. Access was denied.", ex);
+        }
+        catch (PathTooLongException ex)
+        {
+            throw new GenerationFailureException($"Failed to back up {GetDisplayPath(sourcePath)}. The path is too long.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new GenerationFailureException($"Failed to back up {GetDisplayPath(sourcePath)}. The file is in use or could not be copied.", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new GenerationFailureException($"Failed to back up {GetDisplayPath(sourcePath)}. The file path is invalid.", ex);
+        }
+    }
+
+    private static void CreateDirectoryOrThrow(string directoryPath, string operation)
+    {
+        try
+        {
+            Directory.CreateDirectory(directoryPath);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new GenerationFailureException($"Failed to {operation}. Access was denied.", ex);
+        }
+        catch (PathTooLongException ex)
+        {
+            throw new GenerationFailureException($"Failed to {operation}. The path is too long.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new GenerationFailureException($"Failed to {operation}. The folder could not be created.", ex);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new GenerationFailureException($"Failed to {operation}. The folder path is invalid.", ex);
+        }
+        catch (NotSupportedException ex)
+        {
+            throw new GenerationFailureException($"Failed to {operation}. The folder path is not supported.", ex);
+        }
+    }
+
+    private static string GetDisplayPath(string path)
+    {
+        return Path.GetFileName(path) is { Length: > 0 } fileName ? fileName : path;
     }
 
     private readonly record struct ProgressRange(double Start, double End);
