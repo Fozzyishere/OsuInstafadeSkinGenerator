@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private const string SkinFolderValidationKey = "SkinFolder";
     private const string ColourValidationKey = "Colour";
     private const string ClipboardValidationKey = "Clipboard";
+    private const string GenerationValidationKey = "Generation";
 
     // recursion safeguard
     private readonly LogState logState = new();
@@ -283,6 +284,9 @@ public partial class MainWindow : Window
             return;
         }
 
+        // Clear stale generation failure state so users can retry without restarting.
+        this.ClearValidationError(GenerationValidationKey);
+
         var shouldProceed = await this.ShowGenerationWarningAsync();
         if (!shouldProceed)
         {
@@ -299,7 +303,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            this.SetValidationError("Generation", $"Generation failed unexpectedly: {ex.Message}");
+            this.SetValidationError(GenerationValidationKey, $"Generation failed unexpectedly: {ex.Message}");
             this.SetGenerating(false);
             return;
         }
@@ -307,13 +311,13 @@ public partial class MainWindow : Window
         this.ProgressBar!.Value = 100;
         if (result.Success)
         {
-            this.ClearValidationError("Generation");
+            this.ClearValidationError(GenerationValidationKey);
             this.Log(result.Message);
             this.Log("All done!");
         }
         else
         {
-            this.SetValidationError("Generation", result.Message);
+            this.SetValidationError(GenerationValidationKey, result.Message);
         }
 
         this.SetGenerating(false);
