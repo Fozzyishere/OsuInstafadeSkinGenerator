@@ -66,26 +66,42 @@ public static class InstaFadeGenerator
                 return sdResult;
             }
 
+            bool hdProcessed = false;
             if (options.ProcessHd)
             {
                 progress?.Invoke(0.5, "Processing HD (@2x) images...");
-                var hdResult = ProcessVariant(
-                    skinFolder,
-                    prefix,
-                    "@2x",
-                    config,
-                    options,
-                    progress,
-                    new ProgressRange(0.5, 0.9));
-                if (!hdResult.Success)
+                var missingHdAssets = GetMissingRequiredHdAssets(skinFolder, prefix);
+                if (missingHdAssets.Count > 0)
                 {
-                    return hdResult;
+                    foreach (var missingAsset in missingHdAssets)
+                    {
+                        progress?.Invoke(0.5, $"ERROR: Missing required HD asset: {missingAsset}");
+                    }
+
+                    progress?.Invoke(0.5, "ERROR: Skipping HD generation and continuing with SD only.");
+                }
+                else
+                {
+                    var hdResult = ProcessVariant(
+                        skinFolder,
+                        prefix,
+                        "@2x",
+                        config,
+                        options,
+                        progress,
+                        new ProgressRange(0.5, 0.9));
+                    if (!hdResult.Success)
+                    {
+                        return hdResult;
+                    }
+
+                    hdProcessed = true;
                 }
             }
 
             progress?.Invoke(0.9, "Updating skin.ini...");
             int overlapWidth = GetDefaultWidth(skinFolder, prefix, string.Empty);
-            if (overlapWidth <= 0 && options.ProcessHd)
+            if (overlapWidth <= 0 && hdProcessed)
             {
                 overlapWidth = GetDefaultWidth(skinFolder, prefix, "@2x") / 2;
             }
@@ -133,7 +149,8 @@ public static class InstaFadeGenerator
         {
             if (suffix == "@2x")
             {
-                return new GenerationResult(true, "No HD hitcircle found, skipping @2x.");
+                progress?.Invoke(progressRange.Start, "No HD (@2x) found, skipping...");
+                return new GenerationResult(true, "No HD (@2x) found, skipping...");
             }
 
             return new GenerationResult(false, $"hitcircle{suffix}.png not found.");
@@ -218,6 +235,25 @@ public static class InstaFadeGenerator
 
         using var img = LoadImageOrThrow(path);
         return img.Width;
+    }
+
+    private static List<string> GetMissingRequiredHdAssets(string skinFolder, string prefix)
+    {
+        var requiredPaths = new List<string>
+        {
+            Path.Combine(skinFolder, "hitcircle@2x.png"),
+            Path.Combine(skinFolder, "hitcircleoverlay@2x.png"),
+        };
+
+        for (int i = 1; i <= 9; i++)
+        {
+            requiredPaths.Add(ResolvePrefixPath(skinFolder, prefix, i.ToString(), "@2x"));
+        }
+
+        return requiredPaths
+            .Where(path => !File.Exists(path))
+            .Select(path => Path.GetRelativePath(skinFolder, path))
+            .ToList();
     }
 
     private static void CreateBackup(string skinFolder, string prefix)
