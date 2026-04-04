@@ -70,7 +70,7 @@ public static class InstaFadeGenerator
             if (options.ProcessHd)
             {
                 progress?.Invoke(0.5, "Processing HD (@2x) images...");
-                var missingHdAssets = GetMissingRequiredHdAssets(skinFolder, prefix);
+                var missingHdAssets = GetMissingRequiredHdAssets(skinFolder);
                 if (missingHdAssets.Count > 0)
                 {
                     foreach (var missingAsset in missingHdAssets)
@@ -237,18 +237,12 @@ public static class InstaFadeGenerator
         return img.Width;
     }
 
-    private static List<string> GetMissingRequiredHdAssets(string skinFolder, string prefix)
+    private static List<string> GetMissingRequiredHdAssets(string skinFolder)
     {
         var requiredPaths = new List<string>
         {
             Path.Combine(skinFolder, "hitcircle@2x.png"),
-            Path.Combine(skinFolder, "hitcircleoverlay@2x.png"),
         };
-
-        for (int i = 1; i <= 9; i++)
-        {
-            requiredPaths.Add(ResolvePrefixPath(skinFolder, prefix, i.ToString(), "@2x"));
-        }
 
         return requiredPaths
             .Where(path => !File.Exists(path))
