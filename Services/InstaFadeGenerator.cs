@@ -75,10 +75,10 @@ public static class InstaFadeGenerator
                 {
                     foreach (var missingAsset in missingHdAssets)
                     {
-                        progress?.Invoke(0.5, $"ERROR: Missing required HD asset: {missingAsset}");
+                        progress?.Invoke(0.5, $"Warning: Missing required HD asset: {missingAsset}");
                     }
 
-                    progress?.Invoke(0.5, "ERROR: Skipping HD generation and continuing with SD only.");
+                    progress?.Invoke(0.5, "Warning: Skipping HD generation and continuing with SD only.");
                 }
                 else
                 {
