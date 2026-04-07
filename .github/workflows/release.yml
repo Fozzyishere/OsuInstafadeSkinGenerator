@@ -4,11 +4,17 @@ on:
   workflow_run:
     workflows:
       - CI
+    branches:
+      - main
     types:
       - completed
 
 permissions:
   contents: read
+
+concurrency:
+  group: release-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
 
 env:
   DOTNET_VERSION: 10.0.x
@@ -17,7 +23,10 @@ env:
 jobs:
   prepare:
     name: Validate release trigger
-    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && !github.event.workflow_run.head_branch
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.resolve_tag.outputs.should_release }}
@@ -34,15 +43,22 @@ jobs:
         id: resolve_tag
         shell: bash
         run: |
-          tag="$(git tag --points-at "${{ github.event.workflow_run.head_sha }}" | grep -E '^v' | head -n 1)"
+          mapfile -t tags < <(git tag --points-at "${{ github.event.workflow_run.head_sha }}" \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$')
 
-          if [ -z "$tag" ]; then
+          if [ "${#tags[@]}" -eq 0 ]; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
             echo "tag=" >> "$GITHUB_OUTPUT"
-            echo "No matching v* tag found for this CI run. Skipping release workflow."
+            echo "No matching release tag found for this CI run. Skipping release workflow."
             exit 0
           fi
 
+          if [ "${#tags[@]}" -gt 1 ]; then
+            echo "::error::Expected exactly one release tag for commit ${{ github.event.workflow_run.head_sha }}, found ${#tags[@]}: ${tags[*]}"
+            exit 1
+          fi
+
+          tag="${tags[0]}"
           echo "should_release=true" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "Resolved release tag: $tag"
@@ -118,7 +134,7 @@ jobs:
           path: release-artifacts
 
       - name: Publish release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2.6.1
         with:
           tag_name: ${{ needs.prepare.outputs.tag }}
           generate_release_notes: true
