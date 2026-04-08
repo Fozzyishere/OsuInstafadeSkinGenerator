@@ -34,3 +34,5 @@ project.nuget.cache
 
 crash.log
 crashlytics-build.properties
+
+.private-notes/
