@@ -18,11 +18,14 @@ public partial class App : Application
     {
         if (this.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            var inputValidationService = new InputValidationService();
+            var skinIniReader = new SkinIniReader();
+            var skinIniWriter = new SkinIniWriter();
             var windowInteractionService = new WindowInteractionService();
             var viewModel = new MainWindowViewModel(
-                new InputValidationService(),
-                new SkinIniReader(),
-                new InstaFadeGenerator(new SkinIniReader(), new SkinIniWriter()),
+                inputValidationService,
+                skinIniReader,
+                new InstaFadeGenerator(skinIniReader, skinIniWriter),
                 windowInteractionService);
 
             desktop.MainWindow = new MainWindow(viewModel, windowInteractionService);

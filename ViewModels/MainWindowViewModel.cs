@@ -107,13 +107,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     public string ColourHex
     {
         get => this.colourHex;
-        set
-        {
-            if (this.SetProperty(ref this.colourHex, value) && !this.isUpdatingColour)
-            {
-                this.ApplyHexColour();
-            }
-        }
+        set => this.SetProperty(ref this.colourHex, value);
     }
 
     public IBrush ColourPreviewBrush
@@ -225,10 +219,14 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public static MainWindowViewModel CreateDesignTime(IUserInteractionService userInteractionService)
     {
+        var inputValidationService = new InputValidationService();
+        var skinIniReader = new SkinIniReader();
+        var skinIniWriter = new SkinIniWriter();
+
         return new MainWindowViewModel(
-            new InputValidationService(),
-            new SkinIniReader(),
-            new InstaFadeGenerator(new SkinIniReader(), new SkinIniWriter()),
+            inputValidationService,
+            skinIniReader,
+            new InstaFadeGenerator(skinIniReader, skinIniWriter),
             userInteractionService);
     }
 

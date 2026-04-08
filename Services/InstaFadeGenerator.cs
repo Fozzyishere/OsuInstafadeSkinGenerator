@@ -32,7 +32,7 @@ public sealed class InstaFadeGenerator : IGenerationService
         IProgress<GenerationProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        return Task.Run(() => this.Generate(request, progress, cancellationToken), cancellationToken);
+        return Task.Run(() => this.Generate(request, progress, cancellationToken));
     }
 
     private GenerationResult Generate(
