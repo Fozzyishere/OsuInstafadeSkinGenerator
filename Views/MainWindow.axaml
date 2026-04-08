@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:vm="using:OsuInstaFadeSkinGenerator.ViewModels"
     Title="osu! insta-fade skin generator"
     Width="600"
     Height="650"
@@ -12,6 +13,7 @@
     d:DesignHeight="650"
     d:DesignWidth="600"
     CanResize="True"
+    x:DataType="vm:MainWindowViewModel"
     mc:Ignorable="d">
 
     <Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,Auto">
@@ -30,18 +32,20 @@
             Margin="0,0,0,12"
             ColumnDefinitions="*,Auto">
             <TextBox
-                x:Name="SkinFolderTextBox"
                 Grid.Column="0"
                 Margin="0,0,8,0"
-                KeyDown="SkinFolderTextBox_KeyDown"
-                LostFocus="SkinFolderTextBox_LostFocus"
-                ToolTip.Tip="Write or paste the path to the osu! skin folder then hit enter to confirm."
-                Watermark="Select skin folder..." />
+                IsEnabled="{Binding IsInputEnabled}"
+                Text="{Binding SkinFolderPath, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip.Tip="Write or paste the path to the osu! skin folder, then press Enter to confirm."
+                Watermark="Select skin folder...">
+                <TextBox.KeyBindings>
+                    <KeyBinding Command="{Binding ConfirmSkinFolderPathCommand}" Gesture="Enter" />
+                </TextBox.KeyBindings>
+            </TextBox>
             <Button
-                x:Name="BrowseButton"
                 Classes="primary"
                 Grid.Column="1"
-                Click="BrowseButton_Click"
+                Command="{Binding BrowseCommand}"
                 Content="Browse"
                 ToolTip.Tip="Open a folder picker and choose the skin folder you want to convert to insta-fade hitcircles." />
         </Grid>
@@ -62,12 +66,12 @@
                 VerticalAlignment="Center"
                 Text="R:" />
             <TextBox
-                x:Name="ColourR"
                 Grid.Column="2"
                 Width="50"
                 Margin="0,0,8,0"
-                ToolTip.Tip="Red channel for Combo1 in skin.ini. osu! colours use RGB values from 0 to 255."
-                Text="" />
+                IsEnabled="{Binding IsInputEnabled}"
+                Text="{Binding ColourRText, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip.Tip="Red channel for Combo1 in skin.ini. osu! colours use RGB values from 0 to 255." />
 
             <TextBlock
                 Grid.Column="3"
@@ -75,12 +79,12 @@
                 VerticalAlignment="Center"
                 Text="G:" />
             <TextBox
-                x:Name="ColourG"
                 Grid.Column="4"
                 Width="50"
                 Margin="0,0,8,0"
-                ToolTip.Tip="Green channel for Combo1 in skin.ini. This controls the final tint of the generated hitcircle."
-                Text="" />
+                IsEnabled="{Binding IsInputEnabled}"
+                Text="{Binding ColourGText, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip.Tip="Green channel for Combo1 in skin.ini. This controls the final tint of the generated hitcircle." />
 
             <TextBlock
                 Grid.Column="5"
@@ -88,22 +92,21 @@
                 VerticalAlignment="Center"
                 Text="B:" />
             <TextBox
-                x:Name="ColourB"
                 Grid.Column="6"
                 Width="50"
                 Margin="0,0,8,0"
-                ToolTip.Tip="Blue channel for Combo1 in skin.ini. Instant-fade skins are intended to use a single combo colour."
-                Text="" />
+                IsEnabled="{Binding IsInputEnabled}"
+                Text="{Binding ColourBText, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip.Tip="Blue channel for Combo1 in skin.ini. Instant-fade skins are intended to use a single combo colour." />
 
             <Border
-                x:Name="ColourPreview"
                 Classes="colour-preview"
                 Grid.Column="7"
                 Width="32"
                 Height="32"
                 Margin="8,0,0,0"
                 HorizontalAlignment="Left"
-                Background="Transparent"
+                Background="{Binding ColourPreviewBrush}"
                 CornerRadius="4"
                 ToolTip.Tip="Preview of the current Combo1 colour that will tint the generated hitcircle and approach circle." />
         </Grid>
@@ -118,17 +121,16 @@
                 VerticalAlignment="Center"
                 Text="Or hex:" />
             <TextBox
-                x:Name="ColourHex"
                 Grid.Column="1"
                 Width="100"
                 Margin="0,0,8,0"
-                LostFocus="ColourHex_LostFocus"
-                ToolTip.Tip="Alternative colour input in #RRGGBB format. Apply it to copy the value into the RGB fields."
-                Text="" />
+                IsEnabled="{Binding IsInputEnabled}"
+                Text="{Binding ColourHex, UpdateSourceTrigger=LostFocus}"
+                ToolTip.Tip="Alternative colour input in #RRGGBB format. Apply it to copy the value into the RGB fields." />
             <Button
                 Classes="primary"
                 Grid.Column="2"
-                Click="ApplyHex_Click"
+                Command="{Binding ApplyHexCommand}"
                 Content="Apply"
                 ToolTip.Tip="Apply the hex colour to the RGB boxes and preview so the generator uses that Combo1 value." />
         </Grid>
@@ -138,33 +140,32 @@
             Margin="0,0,0,12"
             Spacing="6">
             <CheckBox
-                x:Name="BackupCheckBox"
                 Content="Backup original files before modifying"
-                IsChecked="True"
+                IsChecked="{Binding BackupFiles}"
+                IsEnabled="{Binding IsInputEnabled}"
                 ToolTip.Tip="Copy the current hitcircle, hitcircleoverlay, numbered circle assets, and skin.ini before overwriting them. Recommended because generation is destructive." />
             <CheckBox
-                x:Name="HdCheckBox"
                 Content="Process @2x (HD) variants"
-                IsChecked="True"
+                IsChecked="{Binding ProcessHd}"
+                IsEnabled="{Binding IsInputEnabled}"
                 ToolTip.Tip="Generate the @2x.png high-definition variants as well. Use this if the skin includes HD assets, which osu! detects through the @2x suffix." />
             <CheckBox
-                x:Name="TripleStackCheckBox"
                 Content="Triplestacked (brighter circles for HD/DT)"
-                IsChecked="False"
+                IsChecked="{Binding EnableTripleStacking}"
+                IsEnabled="{Binding IsInputEnabled}"
                 ToolTip.Tip="Keep stacked hitcircle, and hitcircleoverlay instead of making them transparent to make the skin brighter." />
         </StackPanel>
 
         <Border
-            x:Name="ErrorPanel"
             Classes="panel error-panel"
             Grid.Row="5"
             Margin="0,0,0,12"
             Padding="10,8"
-            IsVisible="False">
+            IsVisible="{Binding HasErrors}">
             <TextBlock
-                x:Name="ErrorTextBlock"
                 Foreground="#FFFFD7D7"
                 FontSize="12"
+                Text="{Binding ErrorText}"
                 TextWrapping="Wrap" />
         </Border>
 
@@ -185,11 +186,9 @@
                         FontWeight="SemiBold"
                         Text="Logs" />
                     <Button
-                        x:Name="CopyLogsButton"
                         Classes="utility-icon-button"
                         Grid.Column="1"
-                        Click="CopyLogsButton_Click"
-                        IsEnabled="False"
+                        Command="{Binding CopyLogsCommand}"
                         ToolTip.Tip="Copy the full log output so you can share it when asking for help.">
                         <PathIcon
                             Width="14"
@@ -199,33 +198,30 @@
                 </Grid>
 
                 <TextBox
-                    x:Name="LogTextBox"
                     Classes="log-output"
                     Grid.Row="1"
                     AcceptsReturn="True"
                     IsReadOnly="True"
-                    Text="Ready. Select a skin folder to get started."
+                    Text="{Binding LogText}"
                     TextWrapping="NoWrap" />
             </Grid>
         </Border>
 
         <ProgressBar
-            x:Name="ProgressBar"
             Grid.Row="7"
             Height="8"
             Margin="0,0,0,12"
             Maximum="100"
             Minimum="0"
-            Value="0" />
+            Value="{Binding ProgressValue}" />
 
         <Button
-            x:Name="GenerateButton"
             Classes="primary"
             Grid.Row="8"
             Height="40"
             HorizontalAlignment="Stretch"
             HorizontalContentAlignment="Center"
-            Click="GenerateButton_Click"
+            Command="{Binding GenerateCommand}"
             Content="Generate Insta-Fade"
             FontSize="16"
             FontWeight="Bold"

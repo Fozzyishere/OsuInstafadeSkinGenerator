@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using OsuInstaFadeSkinGenerator.Services;
+using OsuInstaFadeSkinGenerator.ViewModels;
 using OsuInstaFadeSkinGenerator.Views;
 
 namespace OsuInstaFadeSkinGenerator;
@@ -16,7 +18,14 @@ public partial class App : Application
     {
         if (this.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            var windowInteractionService = new WindowInteractionService();
+            var viewModel = new MainWindowViewModel(
+                new InputValidationService(),
+                new SkinIniReader(),
+                new InstaFadeGenerator(new SkinIniReader(), new SkinIniWriter()),
+                windowInteractionService);
+
+            desktop.MainWindow = new MainWindow(viewModel, windowInteractionService);
         }
 
         base.OnFrameworkInitializationCompleted();
