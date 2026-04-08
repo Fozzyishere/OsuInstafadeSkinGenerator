@@ -220,11 +220,16 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public static MainWindowViewModel CreateDesignTime()
     {
+        return CreateDesignTime(new WindowInteractionService());
+    }
+
+    public static MainWindowViewModel CreateDesignTime(IUserInteractionService userInteractionService)
+    {
         return new MainWindowViewModel(
             new InputValidationService(),
             new SkinIniReader(),
             new InstaFadeGenerator(new SkinIniReader(), new SkinIniWriter()),
-            new WindowInteractionService());
+            userInteractionService);
     }
 
     private void ConfirmSkinFolderPathInput(bool logPath = false)

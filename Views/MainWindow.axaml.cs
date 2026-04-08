@@ -7,11 +7,17 @@ namespace OsuInstaFadeSkinGenerator.Views;
 public partial class MainWindow : Window
 {
     public MainWindow()
-        : this(MainWindowViewModel.CreateDesignTime(), new WindowInteractionService())
     {
+        var interactionService = new WindowInteractionService();
+        this.Initialize(interactionService, MainWindowViewModel.CreateDesignTime(interactionService));
     }
 
     public MainWindow(MainWindowViewModel viewModel, WindowInteractionService interactionService)
+    {
+        this.Initialize(interactionService, viewModel);
+    }
+
+    private void Initialize(WindowInteractionService interactionService, MainWindowViewModel viewModel)
     {
         this.InitializeComponent();
         this.DataContext = viewModel;
