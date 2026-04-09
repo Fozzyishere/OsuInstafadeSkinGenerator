@@ -423,7 +423,6 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         this.appliedColour = colour;
         this.SetColourInputs(colour);
-        this.ColourPreviewBrush = new SolidColorBrush(Color.FromRgb(colour.R, colour.G, colour.B));
         this.ClearValidationError(ColourValidationKey);
         this.RefreshGenerateAvailability();
     }
