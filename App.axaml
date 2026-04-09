@@ -69,6 +69,10 @@
             <Setter Property="CaretBrush" Value="{StaticResource OsuPinkBrush}" />
         </Style>
 
+        <Style Selector="TextBox:pointerover">
+            <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+        </Style>
+
         <Style Selector="TextBox:focus">
             <Setter Property="BorderBrush" Value="{StaticResource OsuPinkBrush}" />
         </Style>

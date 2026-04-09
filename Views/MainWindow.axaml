@@ -13,6 +13,7 @@
     d:DesignHeight="650"
     d:DesignWidth="600"
     CanResize="True"
+    PointerPressed="Window_PointerPressed"
     x:DataType="vm:MainWindowViewModel"
     mc:Ignorable="d">
 
@@ -35,8 +36,9 @@
                 Grid.Column="0"
                 Margin="0,0,8,0"
                 IsEnabled="{Binding IsInputEnabled}"
+                LostFocus="SkinFolderTextBox_LostFocus"
                 Text="{Binding SkinFolderPath, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip.Tip="Write or paste the path to the osu! skin folder, then press Enter to confirm."
+                ToolTip.Tip="Write or paste the path to the osu! skin folder. Clicking away or pressing Enter confirms and loads it."
                 Watermark="Select skin folder...">
                 <TextBox.KeyBindings>
                     <KeyBinding Command="{Binding ConfirmSkinFolderPathCommand}" Gesture="Enter" />
@@ -53,7 +55,7 @@
         <Grid
             Grid.Row="2"
             Margin="0,0,0,12"
-            ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*">
+            ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*">
             <TextBlock
                 Grid.Column="0"
                 Margin="0,0,8,0"
@@ -71,7 +73,7 @@
                 Margin="0,0,8,0"
                 IsEnabled="{Binding IsInputEnabled}"
                 Text="{Binding ColourRText, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip.Tip="Red channel for Combo1 in skin.ini. osu! colours use RGB values from 0 to 255." />
+                ToolTip.Tip="Red channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
 
             <TextBlock
                 Grid.Column="3"
@@ -84,7 +86,7 @@
                 Margin="0,0,8,0"
                 IsEnabled="{Binding IsInputEnabled}"
                 Text="{Binding ColourGText, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip.Tip="Green channel for Combo1 in skin.ini. This controls the final tint of the generated hitcircle." />
+                ToolTip.Tip="Green channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
 
             <TextBlock
                 Grid.Column="5"
@@ -97,7 +99,7 @@
                 Margin="0,0,8,0"
                 IsEnabled="{Binding IsInputEnabled}"
                 Text="{Binding ColourBText, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip.Tip="Blue channel for Combo1 in skin.ini. Instant-fade skins are intended to use a single combo colour." />
+                ToolTip.Tip="Blue channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
 
             <Border
                 Classes="colour-preview"
@@ -108,7 +110,15 @@
                 HorizontalAlignment="Left"
                 Background="{Binding ColourPreviewBrush}"
                 CornerRadius="4"
-                ToolTip.Tip="Preview of the current Combo1 colour that will tint the generated hitcircle and approach circle." />
+                ToolTip.Tip="Preview of the currently applied Combo1 colour that will tint the generated hitcircle and approach circle." />
+
+            <Button
+                Classes="primary"
+                Grid.Column="8"
+                Margin="8,0,0,0"
+                Command="{Binding ApplyRgbCommand}"
+                Content="Apply"
+                ToolTip.Tip="Apply the RGB draft to confirm the Combo1 colour and update the preview." />
         </Grid>
 
         <Grid
@@ -125,14 +135,14 @@
                 Width="100"
                 Margin="0,0,8,0"
                 IsEnabled="{Binding IsInputEnabled}"
-                Text="{Binding ColourHex, UpdateSourceTrigger=LostFocus}"
-                ToolTip.Tip="Alternative colour input in #RRGGBB format. Apply it to copy the value into the RGB fields." />
+                Text="{Binding ColourHex, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip.Tip="Alternative draft colour input in #RRGGBB format. Press Apply to confirm it and sync the RGB fields." />
             <Button
                 Classes="primary"
                 Grid.Column="2"
                 Command="{Binding ApplyHexCommand}"
                 Content="Apply"
-                ToolTip.Tip="Apply the hex colour to the RGB boxes and preview so the generator uses that Combo1 value." />
+                ToolTip.Tip="Apply the hex draft to confirm the Combo1 colour, sync the RGB boxes, and update the preview." />
         </Grid>
 
         <StackPanel

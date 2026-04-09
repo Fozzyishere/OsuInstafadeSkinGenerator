@@ -79,6 +79,42 @@ public sealed class InputValidationService : IInputValidationService
         return ColourValidationResult.Invalid("Colour must be specified as RGB (0 to 255) or hex (#RRGGBB).");
     }
 
+    public ColourValidationResult ValidateRgbInput(
+        string? redText,
+        string? greenText,
+        string? blueText,
+        bool requireValue)
+    {
+        var hasAnyValue = !string.IsNullOrWhiteSpace(redText)
+            || !string.IsNullOrWhiteSpace(greenText)
+            || !string.IsNullOrWhiteSpace(blueText);
+
+        if (!hasAnyValue)
+        {
+            return requireValue
+                ? ColourValidationResult.Invalid("Enter a combo colour in RGB.")
+                : ColourValidationResult.Empty;
+        }
+
+        return this.TryParseRgb(redText, greenText, blueText, out var colour)
+            ? ColourValidationResult.Valid(colour)
+            : ColourValidationResult.Invalid("RGB colour must use values from 0 to 255 for R, G, and B.");
+    }
+
+    public ColourValidationResult ValidateHexInput(string? hexText, bool requireValue)
+    {
+        if (string.IsNullOrWhiteSpace(hexText))
+        {
+            return requireValue
+                ? ColourValidationResult.Invalid("Enter a combo colour in hex.")
+                : ColourValidationResult.Empty;
+        }
+
+        return this.TryParseHex(hexText, out var colour)
+            ? ColourValidationResult.Valid(colour)
+            : ColourValidationResult.Invalid("Hex colour must use the format #RRGGBB.");
+    }
+
     public bool TryParseRgb(string? redText, string? greenText, string? blueText, out ColourSelection colour)
     {
         colour = default;

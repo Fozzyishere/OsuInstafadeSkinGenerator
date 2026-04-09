@@ -18,6 +18,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly IUserInteractionService userInteractionService;
     private readonly Dictionary<string, string> validationErrors = [];
     private readonly List<string> logEntries = [];
+    private ColourSelection? appliedColour;
     private bool isUpdatingColour;
     private bool isGenerating;
     private bool hasErrors;
@@ -51,6 +52,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         this.BrowseCommand = new AsyncCommand(this.BrowseAsync, () => this.IsInputEnabled);
         this.ConfirmSkinFolderPathCommand = new RelayCommand(() => this.ConfirmSkinFolderPathInput(), () => this.IsInputEnabled);
+        this.ApplyRgbCommand = new RelayCommand(this.ApplyRgbColour, () => this.IsInputEnabled);
         this.ApplyHexCommand = new RelayCommand(this.ApplyHexColour, () => this.IsInputEnabled);
         this.GenerateCommand = new AsyncCommand(this.GenerateAsync, () => this.CanGenerate);
         this.CopyLogsCommand = new AsyncCommand(this.CopyLogsAsync, () => this.HasLogEntries);
@@ -63,6 +65,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             if (this.SetProperty(ref this.skinFolderPath, value))
             {
+                this.ClearValidationError(SkinFolderValidationKey);
                 this.RefreshGenerateAvailability();
             }
         }
@@ -75,7 +78,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             if (this.SetProperty(ref this.colourRText, value))
             {
-                this.OnRgbComponentChanged();
+                this.OnColourDraftChanged();
             }
         }
     }
@@ -87,7 +90,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             if (this.SetProperty(ref this.colourGText, value))
             {
-                this.OnRgbComponentChanged();
+                this.OnColourDraftChanged();
             }
         }
     }
@@ -99,7 +102,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             if (this.SetProperty(ref this.colourBText, value))
             {
-                this.OnRgbComponentChanged();
+                this.OnColourDraftChanged();
             }
         }
     }
@@ -107,7 +110,13 @@ public sealed class MainWindowViewModel : ViewModelBase
     public string ColourHex
     {
         get => this.colourHex;
-        set => this.SetProperty(ref this.colourHex, value);
+        set
+        {
+            if (this.SetProperty(ref this.colourHex, value))
+            {
+                this.OnColourDraftChanged();
+            }
+        }
     }
 
     public IBrush ColourPreviewBrush
@@ -197,11 +206,15 @@ public sealed class MainWindowViewModel : ViewModelBase
         !this.IsGenerating
         && !this.HasErrors
         && !this.HasPendingSkinFolderConfirmation
+        && !this.HasPendingColourConfirmation
+        && this.appliedColour != null
         && !string.IsNullOrWhiteSpace(this.activeSkinFolderPath);
 
     public AsyncCommand BrowseCommand { get; }
 
     public RelayCommand ConfirmSkinFolderPathCommand { get; }
+
+    public RelayCommand ApplyRgbCommand { get; }
 
     public RelayCommand ApplyHexCommand { get; }
 
@@ -211,6 +224,17 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private bool HasPendingSkinFolderConfirmation =>
         !string.Equals(this.SkinFolderPath, this.lastSubmittedSkinFolderPath, StringComparison.Ordinal);
+
+    private bool HasPendingColourConfirmation =>
+        this.appliedColour == null
+            ? !string.IsNullOrWhiteSpace(this.ColourRText)
+                || !string.IsNullOrWhiteSpace(this.ColourGText)
+                || !string.IsNullOrWhiteSpace(this.ColourBText)
+                || !string.IsNullOrWhiteSpace(this.ColourHex)
+            : !string.Equals(this.ColourRText, this.appliedColour.Value.R.ToString(), StringComparison.Ordinal)
+                || !string.Equals(this.ColourGText, this.appliedColour.Value.G.ToString(), StringComparison.Ordinal)
+                || !string.Equals(this.ColourBText, this.appliedColour.Value.B.ToString(), StringComparison.Ordinal)
+                || !string.Equals(this.ColourHex, this.appliedColour.Value.Hex, StringComparison.Ordinal);
 
     public static MainWindowViewModel CreateDesignTime()
     {
@@ -278,7 +302,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             }
             else
             {
-                this.SetValidationError(ColourValidationKey, "skin.ini does not define a combo colour. Enter one in RGB or hex.", writeToLog: false);
+                this.SetValidationError(ColourValidationKey, "skin.ini does not define a combo colour. Enter one in RGB or hex, then press Apply.", writeToLog: false);
             }
         }
         catch (Exception ex)
@@ -319,11 +343,12 @@ public sealed class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        this.SetColourInputs(comboColour.Value);
+        this.CommitAppliedColour(comboColour.Value);
     }
 
     private void ClearColourInputs()
     {
+        this.appliedColour = null;
         this.isUpdatingColour = true;
         try
         {
@@ -337,76 +362,70 @@ public sealed class MainWindowViewModel : ViewModelBase
         {
             this.isUpdatingColour = false;
         }
+
+        this.ClearValidationError(ColourValidationKey);
+        this.RefreshGenerateAvailability();
     }
 
-    private void OnRgbComponentChanged()
+    private void OnColourDraftChanged()
     {
         if (this.isUpdatingColour)
         {
             return;
         }
 
-        this.isUpdatingColour = true;
-        try
-        {
-            this.UpdateColourPreview();
-            this.UpdateHexFromRgb();
-        }
-        finally
-        {
-            this.isUpdatingColour = false;
-        }
-
-        this.ValidateRgbInputs(requireValue: false);
+        this.ClearValidationError(ColourValidationKey);
+        this.RefreshGenerateAvailability();
     }
 
-    private void ApplyHexColour()
+    private void ApplyRgbColour()
     {
-        var hexInput = this.ColourHex.Trim();
-        if (string.IsNullOrWhiteSpace(hexInput))
+        var validation = this.inputValidationService.ValidateRgbInput(
+            this.ColourRText,
+            this.ColourGText,
+            this.ColourBText,
+            requireValue: false);
+
+        if (validation.ErrorMessage != null)
         {
-            this.ClearValidationError(ColourValidationKey);
+            this.SetValidationError(ColourValidationKey, validation.ErrorMessage, writeToLog: false);
+            return;
+        }
+
+        if (validation.Colour == null)
+        {
             this.ClearColourInputs();
             return;
         }
 
-        if (!this.inputValidationService.TryParseHex(hexInput, out var colour))
+        this.CommitAppliedColour(validation.Colour.Value);
+    }
+
+    private void ApplyHexColour()
+    {
+        var validation = this.inputValidationService.ValidateHexInput(this.ColourHex, requireValue: false);
+        if (validation.ErrorMessage != null)
         {
-            this.SetValidationError(ColourValidationKey, "Hex colour must use the format #RRGGBB.", writeToLog: false);
+            this.SetValidationError(ColourValidationKey, validation.ErrorMessage, writeToLog: false);
             return;
         }
 
+        if (validation.Colour == null)
+        {
+            this.ClearColourInputs();
+            return;
+        }
+
+        this.CommitAppliedColour(validation.Colour.Value);
+    }
+
+    private void CommitAppliedColour(ColourSelection colour)
+    {
+        this.appliedColour = colour;
         this.SetColourInputs(colour);
+        this.ColourPreviewBrush = new SolidColorBrush(Color.FromRgb(colour.R, colour.G, colour.B));
         this.ClearValidationError(ColourValidationKey);
-    }
-
-    private void UpdateHexFromRgb()
-    {
-        if (this.TryGetCurrentColourSelection(out var colour))
-        {
-            this.ColourHex = colour.Hex;
-        }
-        else
-        {
-            this.ColourHex = string.Empty;
-        }
-    }
-
-    private void UpdateColourPreview()
-    {
-        if (this.TryGetCurrentColourSelection(out var colour))
-        {
-            this.ColourPreviewBrush = new SolidColorBrush(Color.FromRgb(colour.R, colour.G, colour.B));
-        }
-        else
-        {
-            this.ColourPreviewBrush = Brushes.Transparent;
-        }
-    }
-
-    private bool TryGetCurrentColourSelection(out ColourSelection colour)
-    {
-        return this.inputValidationService.TryParseRgb(this.ColourRText, this.ColourGText, this.ColourBText, out colour);
+        this.RefreshGenerateAvailability();
     }
 
     private void SetColourInputs(ColourSelection colour)
@@ -499,19 +518,19 @@ public sealed class MainWindowViewModel : ViewModelBase
             this.activeSkinFolderPath = skinFolderPath;
         }
 
-        var colourValidation = this.inputValidationService.ValidateColourInput(
-            this.ColourRText,
-            this.ColourGText,
-            this.ColourBText,
-            this.ColourHex,
-            requireValue: true);
-        this.ApplyColourValidation(colourValidation, clearWhenEmpty: false);
-        if (!colourValidation.IsValid || colourValidation.Colour == null)
+        if (this.HasPendingColourConfirmation)
         {
+            this.SetValidationError(ColourValidationKey, "Press Apply to confirm combo colour changes.", writeToLog: false);
             return false;
         }
 
-        var colour = colourValidation.Colour.Value;
+        if (this.appliedColour == null)
+        {
+            this.SetValidationError(ColourValidationKey, "Enter a combo colour in RGB or hex, then press Apply.", writeToLog: false);
+            return false;
+        }
+
+        var colour = this.appliedColour.Value;
         request = new GenerationRequest(
             skinFolderPath,
             colour.R,
@@ -568,30 +587,6 @@ public sealed class MainWindowViewModel : ViewModelBase
         }
     }
 
-    private void ValidateRgbInputs(bool requireValue)
-    {
-        var validation = this.inputValidationService.ValidateColourInput(
-            this.ColourRText,
-            this.ColourGText,
-            this.ColourBText,
-            this.ColourHex,
-            requireValue);
-
-        this.ApplyColourValidation(validation, clearWhenEmpty: !requireValue);
-    }
-
-    private void ApplyColourValidation(ColourValidationResult validation, bool clearWhenEmpty)
-    {
-        if (validation.ErrorMessage != null)
-        {
-            this.SetValidationError(ColourValidationKey, validation.ErrorMessage, writeToLog: false);
-        }
-        else if (validation.HasValue || clearWhenEmpty)
-        {
-            this.ClearValidationError(ColourValidationKey);
-        }
-    }
-
     private void SetValidationError(string key, string message, bool writeToLog = true)
     {
         if (this.validationErrors.TryGetValue(key, out var existingMessage) && existingMessage == message)
@@ -642,6 +637,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         this.BrowseCommand.RaiseCanExecuteChanged();
         this.ConfirmSkinFolderPathCommand.RaiseCanExecuteChanged();
+        this.ApplyRgbCommand.RaiseCanExecuteChanged();
         this.ApplyHexCommand.RaiseCanExecuteChanged();
         this.GenerateCommand.RaiseCanExecuteChanged();
         this.CopyLogsCommand.RaiseCanExecuteChanged();
