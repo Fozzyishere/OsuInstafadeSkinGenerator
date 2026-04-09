@@ -493,6 +493,12 @@ public sealed class MainWindowViewModel : ViewModelBase
             return false;
         }
 
+        var skinFolderPath = skinFolderValidation.SkinFolderPath!;
+        if (!string.Equals(this.activeSkinFolderPath, skinFolderPath, StringComparison.OrdinalIgnoreCase))
+        {
+            this.activeSkinFolderPath = skinFolderPath;
+        }
+
         var colourValidation = this.inputValidationService.ValidateColourInput(
             this.ColourRText,
             this.ColourGText,
@@ -507,7 +513,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         var colour = colourValidation.Colour.Value;
         request = new GenerationRequest(
-            this.activeSkinFolderPath,
+            skinFolderPath,
             colour.R,
             colour.G,
             colour.B,
