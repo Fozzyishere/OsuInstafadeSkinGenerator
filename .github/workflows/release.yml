@@ -24,7 +24,6 @@ jobs:
     if: >-
       github.event.workflow_run.conclusion == 'success'
       && github.event.workflow_run.event == 'push'
-      && !github.event.workflow_run.head_branch
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.resolve_tag.outputs.should_release }}
@@ -42,7 +41,7 @@ jobs:
         shell: bash
         run: |
           mapfile -t tags < <(git tag --points-at "${{ github.event.workflow_run.head_sha }}" \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$')
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$')
 
           if [ "${#tags[@]}" -eq 0 ]; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
