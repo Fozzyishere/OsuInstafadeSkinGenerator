@@ -6,12 +6,15 @@ on:
       - CI
     types:
       - completed
+  release:
+    types:
+      - published
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.event.workflow_run.head_sha }}
+  group: release-${{ github.event.release.tag_name || github.event.workflow_run.head_sha || github.run_id }}
   cancel-in-progress: false
 
 env:
@@ -22,50 +25,77 @@ jobs:
   prepare:
     name: Validate release trigger
     if: >-
-      github.event.workflow_run.conclusion == 'success'
-      && github.event.workflow_run.event == 'push'
+      (github.event_name == 'workflow_run'
+      && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push')
+      || github.event_name == 'release'
     runs-on: ubuntu-latest
     outputs:
       should_release: ${{ steps.resolve_tag.outputs.should_release }}
       tag: ${{ steps.resolve_tag.outputs.tag }}
       prerelease: ${{ steps.resolve_tag.outputs.prerelease }}
+      source_ref: ${{ steps.resolve_tag.outputs.source_ref }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || format('refs/tags/{0}', github.event.release.tag_name) }}
 
       - name: Resolve release tag
         id: resolve_tag
         shell: bash
         run: |
-          mapfile -t tags < <(git tag --points-at "${{ github.event.workflow_run.head_sha }}" \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$')
+          semver_regex='^v[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$'
 
-          if [ "${#tags[@]}" -eq 0 ]; then
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-            echo "tag=" >> "$GITHUB_OUTPUT"
-            echo "prerelease=false" >> "$GITHUB_OUTPUT"
-            echo "No matching release tag found for this CI run. Expected vX.Y.Z or vX.Y.Z-rcN. Skipping release workflow."
-            exit 0
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            mapfile -t tags < <(git tag --points-at "${{ github.event.workflow_run.head_sha }}" \
+              | grep -E "$semver_regex")
+
+            if [ "${#tags[@]}" -eq 0 ]; then
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "tag=" >> "$GITHUB_OUTPUT"
+              echo "prerelease=false" >> "$GITHUB_OUTPUT"
+              echo "source_ref=" >> "$GITHUB_OUTPUT"
+              echo "No matching release tag found for this CI run. Expected vX.Y.Z or vX.Y.Z-rcN. Skipping release workflow."
+              exit 0
+            fi
+
+            if [ "${#tags[@]}" -gt 1 ]; then
+              echo "::error::Expected exactly one release tag for commit ${{ github.event.workflow_run.head_sha }}, found ${#tags[@]}: ${tags[*]}"
+              exit 1
+            fi
+
+            tag="${tags[0]}"
+            source_ref="${{ github.event.workflow_run.head_sha }}"
+          else
+            tag="${{ github.event.release.tag_name }}"
+            if [[ ! "$tag" =~ $semver_regex ]]; then
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "tag=" >> "$GITHUB_OUTPUT"
+              echo "prerelease=false" >> "$GITHUB_OUTPUT"
+              echo "source_ref=" >> "$GITHUB_OUTPUT"
+              echo "Release published with non-release tag '$tag'. Expected vX.Y.Z or vX.Y.Z-rcN. Skipping release workflow."
+              exit 0
+            fi
+
+            source_ref="refs/tags/$tag"
           fi
 
-          if [ "${#tags[@]}" -gt 1 ]; then
-            echo "::error::Expected exactly one release tag for commit ${{ github.event.workflow_run.head_sha }}, found ${#tags[@]}: ${tags[*]}"
-            exit 1
-          fi
-
-          tag="${tags[0]}"
           prerelease=false
           if [[ "$tag" =~ -rc[0-9]+$ ]]; then
+            prerelease=true
+          fi
+
+          if [ "${{ github.event_name }}" = "release" ] && [ "${{ github.event.release.prerelease }}" = "true" ]; then
             prerelease=true
           fi
 
           echo "should_release=true" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
           echo "Resolved release tag: $tag"
 
   publish:
@@ -90,7 +120,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ needs.prepare.outputs.source_ref }}
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
