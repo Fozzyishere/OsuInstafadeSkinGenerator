@@ -2,9 +2,9 @@ using OsuInstaFadeSkinGenerator.Models;
 
 namespace OsuInstaFadeSkinGenerator.Services;
 
-public static class GenerationInputService
+public sealed class InputValidationService : IInputValidationService
 {
-    public static ColourSelection? GetPrimaryComboColour(SkinConfig config)
+    public ColourSelection? GetPrimaryComboColour(SkinConfig config)
     {
         var comboColour = config.ComboColours
             .OrderBy(colour => colour.Index)
@@ -15,7 +15,7 @@ public static class GenerationInputService
             : new ColourSelection(comboColour.R, comboColour.G, comboColour.B);
     }
 
-    public static SkinFolderValidationResult ValidateSkinFolder(string? inputPath, bool requireValue)
+    public SkinFolderValidationResult ValidateSkinFolder(string? inputPath, bool requireValue)
     {
         var trimmedPath = inputPath?.Trim();
         if (string.IsNullOrWhiteSpace(trimmedPath))
@@ -47,7 +47,7 @@ public static class GenerationInputService
         }
     }
 
-    public static ColourValidationResult ValidateColourInput(
+    public ColourValidationResult ValidateColourInput(
         string? redText,
         string? greenText,
         string? blueText,
@@ -66,14 +66,12 @@ public static class GenerationInputService
                 : ColourValidationResult.Empty;
         }
 
-        // First, try parsing hex if provided.
-        if (!string.IsNullOrWhiteSpace(hexText) && TryParseHex(hexText, out var hexColour))
+        if (!string.IsNullOrWhiteSpace(hexText) && this.TryParseHex(hexText, out var hexColour))
         {
             return ColourValidationResult.Valid(hexColour);
         }
 
-        // Fall back to RGB parsing.
-        if (TryParseRgb(redText, greenText, blueText, out var rgbColour))
+        if (this.TryParseRgb(redText, greenText, blueText, out var rgbColour))
         {
             return ColourValidationResult.Valid(rgbColour);
         }
@@ -81,7 +79,43 @@ public static class GenerationInputService
         return ColourValidationResult.Invalid("Colour must be specified as RGB (0 to 255) or hex (#RRGGBB).");
     }
 
-    public static bool TryParseRgb(string? redText, string? greenText, string? blueText, out ColourSelection colour)
+    public ColourValidationResult ValidateRgbInput(
+        string? redText,
+        string? greenText,
+        string? blueText,
+        bool requireValue)
+    {
+        var hasAnyValue = !string.IsNullOrWhiteSpace(redText)
+            || !string.IsNullOrWhiteSpace(greenText)
+            || !string.IsNullOrWhiteSpace(blueText);
+
+        if (!hasAnyValue)
+        {
+            return requireValue
+                ? ColourValidationResult.Invalid("Enter a combo colour in RGB.")
+                : ColourValidationResult.Empty;
+        }
+
+        return this.TryParseRgb(redText, greenText, blueText, out var colour)
+            ? ColourValidationResult.Valid(colour)
+            : ColourValidationResult.Invalid("RGB colour must use values from 0 to 255 for R, G, and B.");
+    }
+
+    public ColourValidationResult ValidateHexInput(string? hexText, bool requireValue)
+    {
+        if (string.IsNullOrWhiteSpace(hexText))
+        {
+            return requireValue
+                ? ColourValidationResult.Invalid("Enter a combo colour in hex.")
+                : ColourValidationResult.Empty;
+        }
+
+        return this.TryParseHex(hexText, out var colour)
+            ? ColourValidationResult.Valid(colour)
+            : ColourValidationResult.Invalid("Hex colour must use the format #RRGGBB.");
+    }
+
+    public bool TryParseRgb(string? redText, string? greenText, string? blueText, out ColourSelection colour)
     {
         colour = default;
 
@@ -91,7 +125,7 @@ public static class GenerationInputService
             && SetColour(red, green, blue, out colour);
     }
 
-    public static bool TryParseHex(string? input, out ColourSelection colour)
+    public bool TryParseHex(string? input, out ColourSelection colour)
     {
         colour = default;
 
