@@ -11,11 +11,34 @@ internal static partial class SkinIniCommon
     internal static bool TryParseRgb(string value, out byte r, out byte g, out byte b)
     {
         r = g = b = 0;
-        var parts = value.Split(',');
+        var sanitized = TrimInlineComment(value);
+        var parts = sanitized.Split(',');
         return parts.Length >= 3
             && byte.TryParse(parts[0].Trim(), out r)
             && byte.TryParse(parts[1].Trim(), out g)
             && byte.TryParse(parts[2].Trim(), out b);
+    }
+
+    internal static bool TryParseOsuBoolean(string value, out bool parsedValue)
+    {
+        switch (TrimInlineComment(value))
+        {
+            case "0":
+                parsedValue = false;
+                return true;
+            case "1":
+                parsedValue = true;
+                return true;
+            default:
+                parsedValue = false;
+                return false;
+        }
+    }
+
+    internal static string TrimInlineComment(string value)
+    {
+        var commentIndex = value.IndexOf("//", StringComparison.Ordinal);
+        return commentIndex >= 0 ? value[..commentIndex].TrimEnd() : value.TrimEnd();
     }
 
     internal static string NormalizeKey(string key) => key.ToLowerInvariant();

@@ -240,8 +240,9 @@ public sealed class InstaFadeGenerator : IGenerationService
 
         if (request.EnableTripleStacking)
         {
-            this.SaveImageAsPngOrThrow(overlay, hitcirclePath);
-            this.SaveImageAsPngOrThrow(overlay, overlayPath);
+            using var stackedBaseAssets = ImageProcessor.Composite(hitcircle, overlay);
+            this.SaveImageAsPngOrThrow(stackedBaseAssets, hitcirclePath);
+            this.SaveImageAsPngOrThrow(stackedBaseAssets, overlayPath);
         }
         else
         {
