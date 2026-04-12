@@ -66,7 +66,11 @@ public sealed class SkinIniReader : ISkinIniReader
                 break;
             case "hitcircleoverlayabovenumber":
             case "hitcircleoverlayabovenumer":
-                config.HitCircleOverlayAboveNumber = value == "1";
+                if (SkinIniCommon.TryParseOsuBoolean(value, out var hitCircleOverlayAboveNumber))
+                {
+                    config.HitCircleOverlayAboveNumber = hitCircleOverlayAboveNumber;
+                }
+
                 break;
         }
     }
@@ -116,7 +120,7 @@ public sealed class SkinIniReader : ISkinIniReader
 
                 break;
             case "hitcircleoverlap":
-                if (int.TryParse(value, out var overlap))
+                if (int.TryParse(SkinIniCommon.TrimInlineComment(value), out var overlap))
                 {
                     config.HitCircleOverlap = overlap;
                 }

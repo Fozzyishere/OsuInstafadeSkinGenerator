@@ -18,7 +18,9 @@ concurrency:
 
 env:
   DOTNET_VERSION: 10.0.x
+  SOLUTION_PATH: OsuInstaFadeSkinGenerator.slnx
   PROJECT_PATH: OsuInstaFadeSkinGenerator.csproj
+  TEST_PROJECT_PATH: OsuInstaFadeSkinGenerator.Tests/OsuInstaFadeSkinGenerator.Tests.csproj
 
 jobs:
   lint:
@@ -42,10 +44,10 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Restore dependencies
-        run: dotnet restore ${{ env.PROJECT_PATH }}
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
 
       - name: Run formatting and analyzer checks
-        run: dotnet format ${{ env.PROJECT_PATH }} --verify-no-changes --no-restore
+        run: dotnet format ${{ env.SOLUTION_PATH }} --verify-no-changes --no-restore
 
   build:
     name: Build
@@ -69,7 +71,10 @@ jobs:
           restore-keys: nuget-${{ runner.os }}-
 
       - name: Restore dependencies
-        run: dotnet restore ${{ env.PROJECT_PATH }}
+        run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+      - name: Run tests
+        run: dotnet test ${{ env.TEST_PROJECT_PATH }} --no-restore
 
       - name: Build app
         run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
