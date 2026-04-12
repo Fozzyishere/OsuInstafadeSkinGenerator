@@ -22,4 +22,11 @@
     <ProjectReference Include="..\OsuInstaFadeSkinGenerator.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\skinini-test-template\*.ini">
+      <Link>skinini-test-template\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
