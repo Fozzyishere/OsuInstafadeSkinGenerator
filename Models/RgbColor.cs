@@ -7,9 +7,6 @@ public readonly record struct RgbColor(byte R, byte G, byte B)
 {
     public string Hex => $"#{this.R:X2}{this.G:X2}{this.B:X2}";
 
-    public static implicit operator Avalonia.Media.Color(RgbColor color) =>
-        Avalonia.Media.Color.FromRgb(color.R, color.G, color.B);
-
     public static bool TryParseHex(string? input, out RgbColor color)
     {
         color = default;

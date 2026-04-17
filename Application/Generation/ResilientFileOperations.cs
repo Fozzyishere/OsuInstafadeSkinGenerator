@@ -1,12 +1,11 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using OsuInstaFadeSkinGenerator.Application.Generation;
 using OsuInstaFadeSkinGenerator.Models;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
-namespace OsuInstaFadeSkinGenerator.Infrastructure.Io;
+namespace OsuInstaFadeSkinGenerator.Application.Generation;
 
 internal static class ResilientFileOperations
 {

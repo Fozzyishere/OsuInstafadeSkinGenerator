@@ -27,8 +27,10 @@ internal static class VariantProcessingStep
         IImageIo imageIo,
         CancellationToken cancellationToken)
     {
-        var hitcirclePath = Path.Combine(skinFolder, $"hitcircle{variantSuffix}.png");
-        var overlayPath = Path.Combine(skinFolder, $"hitcircleoverlay{variantSuffix}.png");
+        var hitcircleFileName = GetVariantFileName(SkinAssetNames.Hitcircle, variantSuffix);
+        var overlayFileName = GetVariantFileName(SkinAssetNames.HitcircleOverlay, variantSuffix);
+        var hitcirclePath = Path.Combine(skinFolder, hitcircleFileName);
+        var overlayPath = Path.Combine(skinFolder, overlayFileName);
 
         if (!fileSystem.FileExists(hitcirclePath))
         {
@@ -38,7 +40,7 @@ internal static class VariantProcessingStep
                 return new GenerationOutcome(GenerationStatus.Succeeded, null, "No HD (@2x) found, skipping...");
             }
 
-            return new GenerationOutcome(GenerationStatus.Failed, GenerationError.IoFailure, $"hitcircle{variantSuffix}.png not found.");
+            return new GenerationOutcome(GenerationStatus.Failed, GenerationError.IoFailure, $"{hitcircleFileName} not found.");
         }
 
         using var hitcircle = await imageIo.LoadAsync(hitcirclePath, cancellationToken).ConfigureAwait(false);
@@ -128,4 +130,7 @@ internal static class VariantProcessingStep
     {
         progress?.Report(new GenerationProgress(phase, fraction, message, warning));
     }
+
+    private static string GetVariantFileName(string baseName, string variantSuffix)
+        => variantSuffix == SkinAssetNames.HdSuffix ? SkinAssetNames.WithHd(baseName) : baseName;
 }

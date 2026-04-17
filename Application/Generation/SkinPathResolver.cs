@@ -1,4 +1,6 @@
 using System.IO;
+using OsuInstaFadeSkinGenerator.Application.Ports;
+using OsuInstaFadeSkinGenerator.Models;
 
 namespace OsuInstaFadeSkinGenerator.Application.Generation;
 
@@ -11,14 +13,14 @@ internal static class SkinPathResolver
         return Path.Combine(skinFolder, $"{normalized}-{numberSuffix}{hdSuffix}.png");
     }
 
-    public static void EnsureParentDirectory(string filePath, Ports.IFileSystem fileSystem)
+    public static void EnsureParentDirectory(string filePath, IFileSystem fileSystem)
     {
         var directory = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(directory))
         {
-            Infrastructure.Io.ResilientFileOperations.Run(
+            ResilientFileOperations.Run(
                 () => fileSystem.CreateDirectory(directory),
-                Models.GenerationError.IoFailure,
+                GenerationError.IoFailure,
                 $"create folder for {GetDisplayPath(filePath)}");
         }
     }

@@ -451,7 +451,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             this.ColourGText = colour.G.ToString();
             this.ColourBText = colour.B.ToString();
             this.ColourHex = colour.Hex;
-            this.ColourPreviewBrush = new SolidColorBrush(colour);
+            this.ColourPreviewBrush = new SolidColorBrush(colour.ToAvaloniaColor());
         }
         finally
         {
