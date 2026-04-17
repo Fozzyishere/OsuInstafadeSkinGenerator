@@ -16,6 +16,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private const string ClipboardValidationKey = "Clipboard";
     private const string GenerationValidationKey = "Generation";
 
+    private static readonly HashSet<string> BlockingValidationKeys = new()
+    {
+        SkinFolderValidationKey,
+        ColourValidationKey,
+    };
+
     private readonly IInputValidationService inputValidationService;
     private readonly IGenerationService generationService;
     private readonly IDialogService dialogService;
@@ -26,9 +32,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string errorText = string.Empty;
 
     [ObservableProperty]
+    private bool hasErrors;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
     [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
-    private bool hasErrors;
+    private bool hasBlockingErrors;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsInputEnabled))]
@@ -77,7 +86,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public bool CanGenerate =>
         !this.IsGenerating
-        && !this.HasErrors
+        && !this.HasBlockingErrors
         && !this.Folder.HasPendingConfirmation
         && !this.Colour.HasPendingConfirmation
         && this.Colour.AppliedColour != null
@@ -267,6 +276,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void RefreshValidationSummary()
     {
         this.HasErrors = this.validationErrors.Count > 0;
+        this.HasBlockingErrors = this.validationErrors.Keys.Any(BlockingValidationKeys.Contains);
         this.ErrorText = this.HasErrors
             ? string.Join(Environment.NewLine, this.validationErrors.Values)
             : string.Empty;
