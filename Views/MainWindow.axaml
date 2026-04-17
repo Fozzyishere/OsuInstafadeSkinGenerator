@@ -208,7 +208,7 @@
             Padding="12,10"
             IsVisible="{Binding HasErrors}">
             <TextBlock
-                Foreground="#FFFFD7D7"
+                Foreground="{StaticResource OsuErrorTextBrush}"
                 FontSize="12"
                 Text="{Binding ErrorText}"
                 TextWrapping="Wrap" />

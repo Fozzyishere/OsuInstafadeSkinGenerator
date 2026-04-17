@@ -1,0 +1,187 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style Selector="Window">
+        <Setter Property="Background" Value="{StaticResource OsuWindowBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style Selector="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style Selector="TextBlock.window-title">
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+    </Style>
+
+    <Style Selector="TextBlock.subtle">
+        <Setter Property="Foreground" Value="{StaticResource OsuMutedTextBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.hero-title">
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+        <Setter Property="FontSize" Value="19" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="TextBlock.section-header">
+        <Setter Property="Foreground" Value="{StaticResource OsuMutedTextBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="LetterSpacing" Value="1.5" />
+    </Style>
+
+    <Style Selector="TextBox">
+        <Setter Property="Background" Value="{StaticResource OsuSurfaceAltBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="CaretBrush" Value="{StaticResource OsuPinkBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style Selector="TextBox:pointerover">
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+    </Style>
+
+    <Style Selector="TextBox:focus">
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPinkBrush}" />
+    </Style>
+
+    <Style Selector="TextBox.log-output">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+    </Style>
+
+    <Style Selector="TextBox.log-output:focus">
+        <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="Button.log-copy-button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource OsuMutedTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+        <Setter Property="Padding" Value="10,3" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="Button.log-copy-button /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+    </Style>
+
+    <Style Selector="Button.log-copy-button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPinkBrush}" />
+    </Style>
+
+    <Style Selector="Button.log-copy-button:pointerover">
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+    </Style>
+
+    <Style Selector="Button.log-copy-button:disabled">
+        <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <Style Selector="Button">
+        <Setter Property="Background" Value="{StaticResource OsuSurfaceAltBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="Padding" Value="14,9" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="Button:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource OsuSurfaceAltBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPinkBrush}" />
+    </Style>
+
+    <Style Selector="Button:pressed">
+        <Setter Property="Opacity" Value="0.88" />
+    </Style>
+
+    <Style Selector="Button.primary">
+        <Setter Property="Background" Value="{StaticResource OsuHeaderAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPinkStrongBrush}" />
+        <Setter Property="Foreground" Value="White" />
+    </Style>
+
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource OsuHeaderAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPinkBrush}" />
+    </Style>
+
+    <Style Selector="Button.secondary">
+        <Setter Property="Background" Value="{StaticResource OsuSurfaceAltBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+    </Style>
+
+    <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="{StaticResource OsuSurfaceAltBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuCyanBrush}" />
+    </Style>
+
+    <Style Selector="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+        <Setter Property="FontFamily" Value="{StaticResource AllerFontFamily}" />
+        <Setter Property="FontSize" Value="12" />
+    </Style>
+
+    <Style Selector="CheckBox:pointerover">
+        <Setter Property="Opacity" Value="0.95" />
+    </Style>
+
+    <Style Selector="Border.panel">
+        <Setter Property="Background" Value="{StaticResource OsuSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="10" />
+        <Setter Property="BoxShadow" Value="0 2 10 0 #80000000" />
+    </Style>
+
+    <Style Selector="Border.log-panel">
+        <Setter Property="Background" Value="{StaticResource OsuSurfaceBrush}" />
+    </Style>
+
+    <Style Selector="Border.error-panel">
+        <Setter Property="Background" Value="{StaticResource OsuErrorSurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OsuErrorBorderBrush}" />
+    </Style>
+
+    <Style Selector="Border.colour-preview">
+        <Setter Property="BorderBrush" Value="{StaticResource OsuPanelBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+    </Style>
+
+    <Style Selector="ProgressBar">
+        <Setter Property="Foreground" Value="{StaticResource OsuPinkBrush}" />
+        <Setter Property="Background" Value="{StaticResource OsuProgressTrackBrush}" />
+        <Setter Property="CornerRadius" Value="5" />
+    </Style>
+</Styles>

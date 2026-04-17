@@ -1,0 +1,30 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="OsuPinkBrush" Color="{StaticResource OsuPink}" />
+    <SolidColorBrush x:Key="OsuPinkStrongBrush" Color="{StaticResource OsuPinkStrong}" />
+    <SolidColorBrush x:Key="OsuCyanBrush" Color="{StaticResource OsuCyan}" />
+    <SolidColorBrush x:Key="OsuIndigoBrush" Color="{StaticResource OsuIndigo}" />
+    <SolidColorBrush x:Key="OsuTextBrush" Color="#FFF5F2F7" />
+    <SolidColorBrush x:Key="OsuMutedTextBrush" Color="#FF9A96A3" />
+    <SolidColorBrush x:Key="OsuSurfaceBrush" Color="#FF17161C" />
+    <SolidColorBrush x:Key="OsuSurfaceAltBrush" Color="#FF1E1D24" />
+    <SolidColorBrush x:Key="OsuPanelBorderBrush" Color="#FF2A2830" />
+    <SolidColorBrush x:Key="OsuErrorSurfaceBrush" Color="#66BC233F" />
+    <SolidColorBrush x:Key="OsuErrorBorderBrush" Color="#FFFF6D9E" />
+    <SolidColorBrush x:Key="OsuErrorTextBrush" Color="#FFFFD7D7" />
+    <SolidColorBrush x:Key="OsuProgressTrackBrush" Color="#FF1E1D24" />
+    <SolidColorBrush x:Key="OsuPinkGlowBrush" Color="#66EC297B" />
+
+    <LinearGradientBrush x:Key="OsuWindowBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#FF141218" Offset="0" />
+        <GradientStop Color="#FF0E0D11" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="OsuHeaderAccentBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#FFEC297B" Offset="0" />
+        <GradientStop Color="#FFD91C5C" Offset="1" />
+    </LinearGradientBrush>
+
+    <FontFamily x:Key="AllerFontFamily">Aller, avares://OsuInstaFadeSkinGenerator/public/fonts/aller#Aller</FontFamily>
+    <FontFamily x:Key="MonoFontFamily">Cascadia Mono, avares://OsuInstaFadeSkinGenerator/public/fonts/cascadia#Cascadia Mono, Consolas, Courier New</FontFamily>
+</ResourceDictionary>

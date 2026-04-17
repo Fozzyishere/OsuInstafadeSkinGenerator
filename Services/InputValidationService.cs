@@ -119,10 +119,15 @@ public sealed class InputValidationService : IInputValidationService
     {
         colour = default;
 
-        return byte.TryParse(redText, out var red)
+        if (byte.TryParse(redText, out var red)
             && byte.TryParse(greenText, out var green)
-            && byte.TryParse(blueText, out var blue)
-            && SetColour(red, green, blue, out colour);
+            && byte.TryParse(blueText, out var blue))
+        {
+            colour = new ColourSelection(red, green, blue);
+            return true;
+        }
+
+        return false;
     }
 
     public bool TryParseHex(string? input, out ColourSelection colour)
@@ -135,16 +140,15 @@ public sealed class InputValidationService : IInputValidationService
             hex = "#" + hex;
         }
 
-        return hex.Length == 7
+        if (hex.Length == 7
             && byte.TryParse(hex[1..3], System.Globalization.NumberStyles.HexNumber, null, out var red)
             && byte.TryParse(hex[3..5], System.Globalization.NumberStyles.HexNumber, null, out var green)
-            && byte.TryParse(hex[5..7], System.Globalization.NumberStyles.HexNumber, null, out var blue)
-            && SetColour(red, green, blue, out colour);
-    }
+            && byte.TryParse(hex[5..7], System.Globalization.NumberStyles.HexNumber, null, out var blue))
+        {
+            colour = new ColourSelection(red, green, blue);
+            return true;
+        }
 
-    private static bool SetColour(byte red, byte green, byte blue, out ColourSelection colour)
-    {
-        colour = new ColourSelection(red, green, blue);
-        return true;
+        return false;
     }
 }
