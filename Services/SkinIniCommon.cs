@@ -8,17 +8,6 @@ internal static partial class SkinIniCommon
     internal const string ColoursSection = "[colours]";
     internal const string FontsSection = "[fonts]";
 
-    internal static bool TryParseRgb(string value, out byte r, out byte g, out byte b)
-    {
-        r = g = b = 0;
-        var sanitized = TrimInlineComment(value);
-        var parts = sanitized.Split(',');
-        return parts.Length >= 3
-            && byte.TryParse(parts[0].Trim(), out r)
-            && byte.TryParse(parts[1].Trim(), out g)
-            && byte.TryParse(parts[2].Trim(), out b);
-    }
-
     internal static bool TryParseOsuBoolean(string value, out bool parsedValue)
     {
         switch (TrimInlineComment(value))

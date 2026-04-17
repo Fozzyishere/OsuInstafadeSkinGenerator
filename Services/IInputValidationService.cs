@@ -4,7 +4,7 @@ namespace OsuInstaFadeSkinGenerator.Services;
 
 public interface IInputValidationService
 {
-    ColourSelection? GetPrimaryComboColour(SkinConfig config);
+    RgbColor? GetPrimaryComboColour(SkinConfig config);
 
     SkinFolderValidationResult ValidateSkinFolder(string? inputPath, bool requireValue);
 
@@ -23,7 +23,7 @@ public interface IInputValidationService
 
     ColourValidationResult ValidateHexInput(string? hexText, bool requireValue);
 
-    bool TryParseRgb(string? redText, string? greenText, string? blueText, out ColourSelection colour);
+    bool TryParseRgb(string? redText, string? greenText, string? blueText, out RgbColor colour);
 
-    bool TryParseHex(string? input, out ColourSelection colour);
+    bool TryParseHex(string? input, out RgbColor colour);
 }

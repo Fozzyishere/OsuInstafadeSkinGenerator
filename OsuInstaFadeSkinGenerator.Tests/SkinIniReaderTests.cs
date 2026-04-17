@@ -48,9 +48,9 @@ public sealed class SkinIniReaderTests
 
         var expectedCombo2 = expected.ComboColours[2];
         var combo2 = Assert.Single(config.ComboColours, combo => combo.Index == 2);
-        Assert.Equal(expectedCombo2.R, combo2.R);
-        Assert.Equal(expectedCombo2.G, combo2.G);
-        Assert.Equal(expectedCombo2.B, combo2.B);
+        Assert.Equal(expectedCombo2.R, combo2.Color.R);
+        Assert.Equal(expectedCombo2.G, combo2.Color.G);
+        Assert.Equal(expectedCombo2.B, combo2.Color.B);
 
         Assert.Equal(expected.HitCirclePrefix, config.HitCirclePrefix);
         Assert.Equal(-2, config.HitCircleOverlap);

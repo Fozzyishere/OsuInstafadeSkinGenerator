@@ -10,11 +10,11 @@ public class SkinConfig
 
     public bool HitCircleOverlayAboveNumber { get; set; } = true;
 
-    public List<ComboColour> ComboColours { get; set; } = new();
+    public List<(int Index, RgbColor Color)> ComboColours { get; set; } = new();
 
-    public RgbColour? SliderBorder { get; set; }
+    public RgbColor? SliderBorder { get; set; }
 
-    public RgbColour? SliderTrackOverride { get; set; }
+    public RgbColor? SliderTrackOverride { get; set; }
 
     public string HitCirclePrefix { get; set; } = "default";
 

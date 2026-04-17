@@ -18,7 +18,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     private readonly IUserInteractionService userInteractionService;
     private readonly Dictionary<string, string> validationErrors = [];
     private readonly List<string> logEntries = [];
-    private ColourSelection? appliedColour;
+    private RgbColor? appliedColour;
     private bool isUpdatingColour;
     private bool isGenerating;
     private bool hasErrors;
@@ -297,7 +297,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             if (config.ComboColours.Count > 0)
             {
-                var comboColour = config.ComboColours.OrderBy(colour => colour.Index).First();
+                var comboColour = config.ComboColours.OrderBy(colour => colour.Index).First().Color;
                 this.Log($"  Current Combo1: {comboColour.R},{comboColour.G},{comboColour.B}");
             }
             else
@@ -419,7 +419,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         this.CommitAppliedColour(validation.Colour.Value);
     }
 
-    private void CommitAppliedColour(ColourSelection colour)
+    private void CommitAppliedColour(RgbColor colour)
     {
         this.appliedColour = colour;
         this.SetColourInputs(colour);
@@ -427,7 +427,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         this.RefreshGenerateAvailability();
     }
 
-    private void SetColourInputs(ColourSelection colour)
+    private void SetColourInputs(RgbColor colour)
     {
         this.isUpdatingColour = true;
         try
@@ -436,7 +436,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             this.ColourGText = colour.G.ToString();
             this.ColourBText = colour.B.ToString();
             this.ColourHex = colour.Hex;
-            this.ColourPreviewBrush = new SolidColorBrush(Color.FromRgb(colour.R, colour.G, colour.B));
+            this.ColourPreviewBrush = new SolidColorBrush(colour);
         }
         finally
         {
@@ -529,12 +529,9 @@ public sealed class MainWindowViewModel : ViewModelBase
             return false;
         }
 
-        var colour = this.appliedColour.Value;
         request = new GenerationRequest(
             skinFolderPath,
-            colour.R,
-            colour.G,
-            colour.B,
+            this.appliedColour.Value,
             this.ProcessHd,
             this.BackupFiles,
             this.EnableTripleStacking);

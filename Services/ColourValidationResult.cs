@@ -2,7 +2,7 @@ using OsuInstaFadeSkinGenerator.Models;
 
 namespace OsuInstaFadeSkinGenerator.Services;
 
-public sealed record ColourValidationResult(ColourSelection? Colour, string? ErrorMessage)
+public sealed record ColourValidationResult(RgbColor? Colour, string? ErrorMessage)
 {
     public bool IsValid => this.ErrorMessage == null;
 
@@ -12,5 +12,5 @@ public sealed record ColourValidationResult(ColourSelection? Colour, string? Err
 
     public static ColourValidationResult Invalid(string errorMessage) => new(null, errorMessage);
 
-    public static ColourValidationResult Valid(ColourSelection colour) => new(colour, null);
+    public static ColourValidationResult Valid(RgbColor colour) => new(colour, null);
 }

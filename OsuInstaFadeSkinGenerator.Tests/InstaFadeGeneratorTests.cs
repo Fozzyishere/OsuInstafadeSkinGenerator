@@ -156,9 +156,7 @@ public sealed class InstaFadeGeneratorTests
     {
         return new GenerationRequest(
             skinFolder,
-            10,
-            20,
-            30,
+            new RgbColor(10, 20, 30),
             processHd,
             backupFiles,
             enableTripleStacking);

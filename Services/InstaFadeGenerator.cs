@@ -133,9 +133,9 @@ public sealed class InstaFadeGenerator : IGenerationService
 
             this.UpdateSkinIniOrThrow(
                 skinIniPath,
-                request.ComboR,
-                request.ComboG,
-                request.ComboB,
+                request.ComboColor.R,
+                request.ComboColor.G,
+                request.ComboColor.B,
                 overlapWidth > 0 ? overlapWidth : 0);
 
             this.ReportProgress(progress, 1.0, "Done!");
@@ -192,7 +192,7 @@ public sealed class InstaFadeGenerator : IGenerationService
 
         cancellationToken.ThrowIfCancellationRequested();
         this.ReportProgress(progress, progressRange.Start + (progressSpan * 0.2), $"Tinting {suffix}...");
-        ImageProcessor.Tint(upscaledHitcircle, request.ComboR, request.ComboG, request.ComboB);
+        ImageProcessor.Tint(upscaledHitcircle, request.ComboColor.R, request.ComboColor.G, request.ComboColor.B);
 
         cancellationToken.ThrowIfCancellationRequested();
         this.ReportProgress(progress, progressRange.Start + (progressSpan * 0.3), $"Compositing {suffix}...");

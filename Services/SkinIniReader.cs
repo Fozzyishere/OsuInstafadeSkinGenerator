@@ -81,9 +81,9 @@ public sealed class SkinIniReader : ISkinIniReader
         if (comboMatch.Success)
         {
             var index = int.Parse(comboMatch.Groups[1].Value);
-            if (SkinIniCommon.TryParseRgb(value, out var r, out var g, out var b))
+            if (RgbColor.TryParseCsv(value, out var color))
             {
-                config.ComboColours.Add(new ComboColour(index, r, g, b));
+                config.ComboColours.Add((index, color));
             }
 
             return;
@@ -92,16 +92,16 @@ public sealed class SkinIniReader : ISkinIniReader
         switch (SkinIniCommon.NormalizeKey(key))
         {
             case "sliderborder":
-                if (SkinIniCommon.TryParseRgb(value, out var sliderBorderR, out var sliderBorderG, out var sliderBorderB))
+                if (RgbColor.TryParseCsv(value, out var sliderBorder))
                 {
-                    config.SliderBorder = new RgbColour(sliderBorderR, sliderBorderG, sliderBorderB);
+                    config.SliderBorder = sliderBorder;
                 }
 
                 break;
             case "slidertrackoverride":
-                if (SkinIniCommon.TryParseRgb(value, out var sliderTrackR, out var sliderTrackG, out var sliderTrackB))
+                if (RgbColor.TryParseCsv(value, out var sliderTrackOverride))
                 {
-                    config.SliderTrackOverride = new RgbColour(sliderTrackR, sliderTrackG, sliderTrackB);
+                    config.SliderTrackOverride = sliderTrackOverride;
                 }
 
                 break;

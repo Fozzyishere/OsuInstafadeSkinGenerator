@@ -83,9 +83,9 @@ internal static class SkinIniTemplateFixture
         foreach (var expectedCombo in expected.ComboColours)
         {
             var actualCombo = Assert.Single(actual.ComboColours, combo => combo.Index == expectedCombo.Key);
-            Assert.Equal(expectedCombo.Value.R, actualCombo.R);
-            Assert.Equal(expectedCombo.Value.G, actualCombo.G);
-            Assert.Equal(expectedCombo.Value.B, actualCombo.B);
+            Assert.Equal(expectedCombo.Value.R, actualCombo.Color.R);
+            Assert.Equal(expectedCombo.Value.G, actualCombo.Color.G);
+            Assert.Equal(expectedCombo.Value.B, actualCombo.Color.B);
         }
 
         AssertRgbEquals(expected.SliderBorder, actual.SliderBorder);
@@ -295,7 +295,7 @@ internal static class SkinIniTemplateFixture
         return true;
     }
 
-    private static void AssertRgbEquals(RgbTriplet? expected, RgbColour? actual)
+    private static void AssertRgbEquals(RgbTriplet? expected, RgbColor? actual)
     {
         if (expected is null)
         {
@@ -304,9 +304,9 @@ internal static class SkinIniTemplateFixture
         }
 
         Assert.NotNull(actual);
-        Assert.Equal(expected.Value.R, actual!.R);
-        Assert.Equal(expected.Value.G, actual.G);
-        Assert.Equal(expected.Value.B, actual.B);
+        Assert.Equal(expected.Value.R, actual!.Value.R);
+        Assert.Equal(expected.Value.G, actual.Value.G);
+        Assert.Equal(expected.Value.B, actual.Value.B);
     }
 
     internal sealed class SupportedSkinIniValues

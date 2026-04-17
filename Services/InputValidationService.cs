@@ -4,15 +4,17 @@ namespace OsuInstaFadeSkinGenerator.Services;
 
 public sealed class InputValidationService : IInputValidationService
 {
-    public ColourSelection? GetPrimaryComboColour(SkinConfig config)
+    public RgbColor? GetPrimaryComboColour(SkinConfig config)
     {
-        var comboColour = config.ComboColours
-            .OrderBy(colour => colour.Index)
-            .FirstOrDefault();
+        if (config.ComboColours.Count == 0)
+        {
+            return null;
+        }
 
-        return comboColour == null
-            ? null
-            : new ColourSelection(comboColour.R, comboColour.G, comboColour.B);
+        return config.ComboColours
+            .OrderBy(entry => entry.Index)
+            .First()
+            .Color;
     }
 
     public SkinFolderValidationResult ValidateSkinFolder(string? inputPath, bool requireValue)
@@ -115,40 +117,9 @@ public sealed class InputValidationService : IInputValidationService
             : ColourValidationResult.Invalid("Hex colour must use the format #RRGGBB.");
     }
 
-    public bool TryParseRgb(string? redText, string? greenText, string? blueText, out ColourSelection colour)
-    {
-        colour = default;
+    public bool TryParseRgb(string? redText, string? greenText, string? blueText, out RgbColor colour)
+        => RgbColor.TryParseTriplet(redText, greenText, blueText, out colour);
 
-        if (byte.TryParse(redText, out var red)
-            && byte.TryParse(greenText, out var green)
-            && byte.TryParse(blueText, out var blue))
-        {
-            colour = new ColourSelection(red, green, blue);
-            return true;
-        }
-
-        return false;
-    }
-
-    public bool TryParseHex(string? input, out ColourSelection colour)
-    {
-        colour = default;
-
-        var hex = input?.Trim() ?? string.Empty;
-        if (!hex.StartsWith('#'))
-        {
-            hex = "#" + hex;
-        }
-
-        if (hex.Length == 7
-            && byte.TryParse(hex[1..3], System.Globalization.NumberStyles.HexNumber, null, out var red)
-            && byte.TryParse(hex[3..5], System.Globalization.NumberStyles.HexNumber, null, out var green)
-            && byte.TryParse(hex[5..7], System.Globalization.NumberStyles.HexNumber, null, out var blue))
-        {
-            colour = new ColourSelection(red, green, blue);
-            return true;
-        }
-
-        return false;
-    }
+    public bool TryParseHex(string? input, out RgbColor colour)
+        => RgbColor.TryParseHex(input, out colour);
 }

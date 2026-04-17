@@ -2,9 +2,7 @@ namespace OsuInstaFadeSkinGenerator.Models;
 
 public sealed record GenerationRequest(
     string SkinFolderPath,
-    byte ComboR,
-    byte ComboG,
-    byte ComboB,
+    RgbColor ComboColor,
     bool ProcessHd,
     bool BackupFiles,
     bool EnableTripleStacking);
