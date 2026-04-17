@@ -1,4 +1,4 @@
-namespace OsuInstaFadeSkinGenerator.Models;
+namespace OsuInstaFadeSkinGenerator.Domain;
 
 public readonly record struct GenerationOutcome(
     GenerationStatus Status,

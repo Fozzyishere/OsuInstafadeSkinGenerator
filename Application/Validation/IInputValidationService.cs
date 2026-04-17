@@ -1,6 +1,6 @@
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
-namespace OsuInstaFadeSkinGenerator.Services;
+namespace OsuInstaFadeSkinGenerator.Application.Validation;
 
 public interface IInputValidationService
 {

@@ -1,6 +1,6 @@
 using OsuInstaFadeSkinGenerator.Infrastructure.Io;
 using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
@@ -14,21 +14,20 @@ public sealed class SkinIniReaderTests
     public async Task Read_Template_ParsesSupportedFields(int templateNumber)
     {
         using var skinDir = new TestSkinDirectory();
-        var templateContent = SkinIniTemplateFixture.GetTemplateContent(templateNumber);
         SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, templateNumber);
 
         var reader = new SkinIniReader(new PhysicalFileSystem());
         var config = await reader.ReadAsync(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni), CancellationToken.None);
 
-        SkinIniTemplateFixture.AssertSupportedFieldsMatch(templateContent, config);
+        SkinIniTemplateFixture.AssertSupportedFieldsMatch(templateNumber, config);
     }
 
     [Fact]
     public async Task Read_TemplateDerivedMixedCasingAndInvalidValues_LeavesDefaults()
     {
         using var skinDir = new TestSkinDirectory();
+        var expected = SkinIniTemplateFixture.GetExpected(4);
         var templateContent = SkinIniTemplateFixture.GetTemplateContent(4);
-        var expected = SkinIniTemplateFixture.ParseSupportedFields(templateContent);
         var content = templateContent
             .Replace("[General]", "[gEnErAl]", StringComparison.Ordinal)
             .Replace("[Colours]", "[cOlOuRs]", StringComparison.Ordinal)
@@ -48,11 +47,9 @@ public sealed class SkinIniReaderTests
         Assert.True(config.HitCircleOverlayAboveNumber);
         Assert.DoesNotContain(config.ComboColours, combo => combo.Index == 1);
 
-        var expectedCombo2 = expected.ComboColours[2];
+        var expectedCombo2 = expected.ComboColours.Single(combo => combo.Index == 2).Color;
         var combo2 = Assert.Single(config.ComboColours, combo => combo.Index == 2);
-        Assert.Equal(expectedCombo2.R, combo2.Color.R);
-        Assert.Equal(expectedCombo2.G, combo2.Color.G);
-        Assert.Equal(expectedCombo2.B, combo2.Color.B);
+        Assert.Equal(expectedCombo2, combo2.Color);
 
         Assert.Equal(expected.HitCirclePrefix, config.HitCirclePrefix);
         Assert.Equal(-2, config.HitCircleOverlap);

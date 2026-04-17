@@ -1,5 +1,5 @@
 using Avalonia.Media;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.ViewModels;
 

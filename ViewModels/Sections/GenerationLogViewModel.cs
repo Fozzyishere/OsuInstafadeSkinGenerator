@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OsuInstaFadeSkinGenerator.Application.Ports;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.ViewModels.Sections;
 

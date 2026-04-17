@@ -1,4 +1,4 @@
-namespace OsuInstaFadeSkinGenerator.Models;
+namespace OsuInstaFadeSkinGenerator.Domain;
 
 public enum GenerationError
 {

@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using OsuInstaFadeSkinGenerator.Application.Ports;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 

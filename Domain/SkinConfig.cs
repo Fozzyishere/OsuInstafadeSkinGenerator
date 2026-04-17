@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace OsuInstaFadeSkinGenerator.Models;
+namespace OsuInstaFadeSkinGenerator.Domain;
 
 public sealed record SkinConfig(
     string Name,

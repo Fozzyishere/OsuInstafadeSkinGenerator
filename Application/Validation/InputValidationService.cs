@@ -1,9 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
-namespace OsuInstaFadeSkinGenerator.Services;
+namespace OsuInstaFadeSkinGenerator.Application.Validation;
 
 public sealed class InputValidationService : IInputValidationService
 {

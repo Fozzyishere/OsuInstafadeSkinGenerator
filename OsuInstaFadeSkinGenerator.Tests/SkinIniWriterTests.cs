@@ -1,14 +1,16 @@
 using OsuInstaFadeSkinGenerator.Infrastructure.Io;
 using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
 public sealed class SkinIniWriterTests
 {
     [Theory]
+    [InlineData(1, 9, 8, 7, 22)]
     [InlineData(2, 7, 8, 9, 64)]
     [InlineData(3, 4, 5, 6, 77)]
+    [InlineData(4, 250, 240, 230, 12)]
     public async Task Update_Template_RewritesSupportedFieldsAndPreservesOtherLines(
         int templateNumber,
         byte comboR,
@@ -17,7 +19,6 @@ public sealed class SkinIniWriterTests
         int hitCircleOverlap)
     {
         using var skinDir = new TestSkinDirectory();
-        var originalContent = SkinIniTemplateFixture.GetTemplateContent(templateNumber);
         SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, templateNumber);
 
         var writer = new SkinIniWriter(new PhysicalFileSystem());
@@ -27,7 +28,7 @@ public sealed class SkinIniWriterTests
 
         var updated = File.ReadAllText(skinIniPath);
         SkinIniTemplateFixture.AssertUpdatedSkinIni(
-            originalContent,
+            templateNumber,
             updated,
             $"{comboR},{comboG},{comboB}",
             hitCircleOverlap);

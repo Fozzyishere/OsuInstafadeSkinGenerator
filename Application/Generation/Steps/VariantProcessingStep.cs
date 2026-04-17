@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using OsuInstaFadeSkinGenerator.Application.Imaging;
 using OsuInstaFadeSkinGenerator.Application.Ports;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 

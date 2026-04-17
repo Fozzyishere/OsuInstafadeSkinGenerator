@@ -1,6 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.Application.Ports;
 

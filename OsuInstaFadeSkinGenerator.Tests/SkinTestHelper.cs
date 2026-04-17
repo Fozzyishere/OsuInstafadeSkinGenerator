@@ -1,4 +1,4 @@
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 

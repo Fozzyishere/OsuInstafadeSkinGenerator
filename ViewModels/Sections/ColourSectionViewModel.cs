@@ -1,8 +1,8 @@
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using OsuInstaFadeSkinGenerator.Models;
-using OsuInstaFadeSkinGenerator.Services;
+using OsuInstaFadeSkinGenerator.Application.Validation;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.ViewModels.Sections;
 

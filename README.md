@@ -43,3 +43,12 @@ Download the latest release from the [Releases](https://github.com/Fozzyishere/o
 ## Contributing
 
 I desperately need this, lol. Just follow the [GitHub Standard Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962), and we should be good.
+
+### Building and testing
+
+```bash
+dotnet build -c Debug
+dotnet test OsuInstaFadeSkinGenerator.Tests -c Debug
+```
+
+Build settings in [Directory.Build.props](Directory.Build.props) enable `TreatWarningsAsErrors` + `EnforceCodeStyleInBuild`, so the build is strict; please keep it warning-free.

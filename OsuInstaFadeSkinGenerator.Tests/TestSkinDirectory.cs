@@ -2,6 +2,8 @@ namespace OsuInstaFadeSkinGenerator.Tests;
 
 internal sealed class TestSkinDirectory : IDisposable
 {
+    private const int RetryDelayMilliseconds = 100;
+
     public TestSkinDirectory()
     {
         this.RootPath = Path.Combine(
@@ -16,9 +18,42 @@ internal sealed class TestSkinDirectory : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(this.RootPath))
+        if (!Directory.Exists(this.RootPath))
+        {
+            return;
+        }
+
+        try
         {
             Directory.Delete(this.RootPath, recursive: true);
+        }
+        catch (IOException)
+        {
+            Thread.Sleep(RetryDelayMilliseconds);
+            try
+            {
+                Directory.Delete(this.RootPath, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Thread.Sleep(RetryDelayMilliseconds);
+            try
+            {
+                Directory.Delete(this.RootPath, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
     }
 }

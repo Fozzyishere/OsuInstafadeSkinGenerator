@@ -1,0 +1,224 @@
+using Microsoft.Extensions.Logging.Abstractions;
+using OsuInstaFadeSkinGenerator.Application.Generation;
+using OsuInstaFadeSkinGenerator.Application.Ports;
+using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
+using OsuInstaFadeSkinGenerator.Infrastructure.Io;
+using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
+using OsuInstaFadeSkinGenerator.Domain;
+
+namespace OsuInstaFadeSkinGenerator.Tests;
+
+public sealed class InstaFadeGenerationOrchestratorTests
+{
+    [Fact]
+    public async Task GenerateAsync_HappyPath_ReturnsSucceededWithDoneProgress()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+        var progress = new RecordingProgress();
+        var orchestrator = CreateOrchestrator();
+
+        var result = await orchestrator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: false, enableTripleStacking: false),
+            progress);
+
+        Assert.Equal(GenerationStatus.Succeeded, result.Status);
+        Assert.Null(result.Error);
+        Assert.Contains(progress.Entries, entry => entry.Phase == GenerationPhase.Done);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_SkinFolderMissing_ReturnsFailedWithSkinFolderMissingError()
+    {
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var orchestrator = CreateOrchestrator();
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(nonExistentPath));
+
+        Assert.Equal(GenerationStatus.Failed, result.Status);
+        Assert.Equal(GenerationError.SkinFolderMissing, result.Error);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_SkinIniMissing_ReturnsFailedWithSkinIniMissingError()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var orchestrator = CreateOrchestrator();
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(skinDir.RootPath));
+
+        Assert.Equal(GenerationStatus.Failed, result.Status);
+        Assert.Equal(GenerationError.SkinIniMissing, result.Error);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_MissingHdAsset_SucceedsButEmitsHdWarning()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(1)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+        var progress = new RecordingProgress();
+        var orchestrator = CreateOrchestrator();
+
+        var result = await orchestrator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: true),
+            progress);
+
+        Assert.Equal(GenerationStatus.Succeeded, result.Status);
+        Assert.Contains(
+            progress.Entries,
+            entry => entry.Phase == GenerationPhase.ProcessingHd && entry.Warning == GenerationError.MissingHdAsset);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CorruptPngAsHitcircle_ReturnsFailedWithImageDecodeFailure()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardSdNumberAssets()
+            .Build();
+        File.WriteAllText(Path.Combine(fixture.RootPath, SkinAssetNames.Hitcircle), "not a png");
+        File.WriteAllText(Path.Combine(fixture.RootPath, SkinAssetNames.HitcircleOverlay), "not a png");
+
+        var orchestrator = CreateOrchestrator();
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(fixture.RootPath));
+
+        Assert.Equal(GenerationStatus.Failed, result.Status);
+        Assert.Equal(GenerationError.ImageDecodeFailure, result.Error);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_IoFailureReadingSkinIni_ReturnsFailedWithIoFailure()
+    {
+        using var skinDir = new TestSkinDirectory();
+        SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, 1);
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onReadAllLinesAsync: _ => throw new IOException("file in use"));
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(skinDir.RootPath));
+
+        Assert.Equal(GenerationStatus.Failed, result.Status);
+        Assert.Equal(GenerationError.IoFailure, result.Error);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_UnexpectedException_ReturnsFailedWithUnexpected()
+    {
+        using var skinDir = new TestSkinDirectory();
+        SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, 1);
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onDirectoryExists: _ => throw new OutOfMemoryException("simulated unexpected"));
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(skinDir.RootPath));
+
+        Assert.Equal(GenerationStatus.Failed, result.Status);
+        Assert.Equal(GenerationError.Unexpected, result.Error);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CancelledBeforeStart_ReturnsCancelled()
+    {
+        using var skinDir = new TestSkinDirectory();
+        SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, 1);
+        var orchestrator = CreateOrchestrator();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(skinDir.RootPath), cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+    }
+
+    private static InstaFadeGenerationOrchestrator CreateOrchestrator()
+        => CreateOrchestratorWith(new PhysicalFileSystem());
+
+    private static InstaFadeGenerationOrchestrator CreateOrchestratorWith(IFileSystem fileSystem)
+    {
+        return new InstaFadeGenerationOrchestrator(
+            new SkinIniReader(fileSystem),
+            new SkinIniWriter(fileSystem),
+            fileSystem,
+            new ImageSharpImageIo(),
+            NullLogger<InstaFadeGenerationOrchestrator>.Instance);
+    }
+
+    private static GenerationRequest CreateRequest(
+        string skinFolder,
+        bool processHd = false,
+        bool backupFiles = false,
+        bool enableTripleStacking = false)
+    {
+        return new GenerationRequest(
+            skinFolder,
+            new RgbColor(10, 20, 30),
+            processHd,
+            backupFiles,
+            enableTripleStacking);
+    }
+
+    private sealed class RecordingProgress : IProgress<GenerationProgress>
+    {
+        public List<GenerationProgress> Entries { get; } = [];
+
+        public void Report(GenerationProgress value) => this.Entries.Add(value);
+    }
+
+    private sealed class ThrowingFileSystem : IFileSystem
+    {
+        private readonly IFileSystem inner;
+        private readonly Action<string>? onDirectoryExists;
+        private readonly Action<string>? onFileExists;
+        private readonly Action<string>? onReadAllLinesAsync;
+
+        public ThrowingFileSystem(
+            IFileSystem inner,
+            Action<string>? onDirectoryExists = null,
+            Action<string>? onFileExists = null,
+            Action<string>? onReadAllLinesAsync = null)
+        {
+            this.inner = inner;
+            this.onDirectoryExists = onDirectoryExists;
+            this.onFileExists = onFileExists;
+            this.onReadAllLinesAsync = onReadAllLinesAsync;
+        }
+
+        public bool DirectoryExists(string path)
+        {
+            this.onDirectoryExists?.Invoke(path);
+            return this.inner.DirectoryExists(path);
+        }
+
+        public bool FileExists(string path)
+        {
+            this.onFileExists?.Invoke(path);
+            return this.inner.FileExists(path);
+        }
+
+        public void CreateDirectory(string path) => this.inner.CreateDirectory(path);
+
+        public void CopyFile(string sourcePath, string destinationPath, bool overwrite)
+            => this.inner.CopyFile(sourcePath, destinationPath, overwrite);
+
+        public Task<string[]> ReadAllLinesAsync(string path, CancellationToken cancellationToken)
+        {
+            this.onReadAllLinesAsync?.Invoke(path);
+            return this.inner.ReadAllLinesAsync(path, cancellationToken);
+        }
+
+        public Task WriteAllLinesAsync(string path, IEnumerable<string> lines, CancellationToken cancellationToken)
+            => this.inner.WriteAllLinesAsync(path, lines, cancellationToken);
+    }
+}

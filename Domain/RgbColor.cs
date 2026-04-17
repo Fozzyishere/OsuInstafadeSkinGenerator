@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 
-namespace OsuInstaFadeSkinGenerator.Models;
+namespace OsuInstaFadeSkinGenerator.Domain;
 
 public readonly record struct RgbColor(byte R, byte G, byte B)
 {

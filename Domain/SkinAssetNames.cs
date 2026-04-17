@@ -1,6 +1,6 @@
 using System;
 
-namespace OsuInstaFadeSkinGenerator.Models;
+namespace OsuInstaFadeSkinGenerator.Domain;
 
 public static class SkinAssetNames
 {

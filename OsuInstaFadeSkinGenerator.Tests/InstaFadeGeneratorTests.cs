@@ -3,31 +3,36 @@ using OsuInstaFadeSkinGenerator.Application.Generation;
 using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
 using OsuInstaFadeSkinGenerator.Infrastructure.Io;
 using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
 public sealed class InstaFadeGeneratorTests
 {
+    private static readonly Rgba32 HdHitcircleColor = new(200, 0, 0, 255);
+    private static readonly Rgba32 HdOverlayColor = new(0, 200, 0, 255);
+    private const int HdBaseAssetSize = 8;
+    private const int HdNumberSize = 4;
+
     [Fact]
     public async Task GenerateAsync_Template2_PerformsInstaFadeWorkflowAndUpdatesSkinIni()
     {
         using var skinDir = new TestSkinDirectory();
-        var templateContent = SkinIniTemplateFixture.GetTemplateContent(2);
-        var prefix = SkinIniTemplateFixture.ParseSupportedFields(templateContent).HitCirclePrefix;
-        SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, 2);
-        CreateBaseAssets(skinDir.RootPath);
-        SkinTestHelper.CreateNumberAssets(skinDir.RootPath, prefix);
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
 
         var generator = CreateOrchestrator();
         var result = await generator.GenerateAsync(
-            CreateRequest(skinDir.RootPath, processHd: false, backupFiles: false, enableTripleStacking: false));
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: false, enableTripleStacking: false));
 
         Assert.Equal(GenerationStatus.Succeeded, result.Status);
 
-        var blankPath = SkinTestHelper.ResolvePrefixPath(skinDir.RootPath, prefix, "0");
-        var numberPath = SkinTestHelper.ResolvePrefixPath(skinDir.RootPath, prefix, "1");
+        var blankPath = SkinTestHelper.ResolvePrefixPath(fixture.RootPath, fixture.Prefix, "0");
+        var numberPath = SkinTestHelper.ResolvePrefixPath(fixture.RootPath, fixture.Prefix, "1");
         Assert.True(File.Exists(blankPath));
         Assert.True(File.Exists(numberPath));
 
@@ -50,11 +55,11 @@ public sealed class InstaFadeGeneratorTests
             Assert.Equal(5, number.Height);
         }
 
-        SkinTestHelper.AssertFullyTransparent(Path.Combine(skinDir.RootPath, SkinAssetNames.Hitcircle));
-        SkinTestHelper.AssertFullyTransparent(Path.Combine(skinDir.RootPath, SkinAssetNames.HitcircleOverlay));
+        SkinTestHelper.AssertFullyTransparent(Path.Combine(fixture.RootPath, SkinAssetNames.Hitcircle));
+        SkinTestHelper.AssertFullyTransparent(Path.Combine(fixture.RootPath, SkinAssetNames.HitcircleOverlay));
 
-        var updatedSkinIni = File.ReadAllText(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni));
-        SkinIniTemplateFixture.AssertUpdatedSkinIni(templateContent, updatedSkinIni, "10,20,30", 5);
+        var updatedSkinIni = File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni));
+        SkinIniTemplateFixture.AssertUpdatedSkinIni(fixture.TemplateNumber, updatedSkinIni, "10,20,30", 5);
     }
 
     [Fact]
@@ -62,28 +67,28 @@ public sealed class InstaFadeGeneratorTests
     {
         using var skinDir = new TestSkinDirectory();
         var templateContent = SkinIniTemplateFixture.GetTemplateContent(4);
-        var prefix = SkinIniTemplateFixture.ParseSupportedFields(templateContent).HitCirclePrefix;
-        SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, 4);
-        CreateBaseAssets(skinDir.RootPath);
-        SkinTestHelper.WriteFilledPng(Path.Combine(skinDir.RootPath, SkinAssetNames.WithHd(SkinAssetNames.Hitcircle)), 8, 8, new Rgba32(200, 0, 0, 255));
-        SkinTestHelper.WriteFilledPng(Path.Combine(skinDir.RootPath, SkinAssetNames.WithHd(SkinAssetNames.HitcircleOverlay)), 8, 8, new Rgba32(0, 200, 0, 255));
-        SkinTestHelper.WriteFilledPng(SkinTestHelper.ResolvePrefixPath(skinDir.RootPath, prefix, "1"), 2, 2, new Rgba32(255, 255, 255, 255));
-        SkinTestHelper.WriteFilledPng(SkinTestHelper.ResolvePrefixPath(skinDir.RootPath, prefix, "5", SkinAssetNames.HdSuffix), 4, 4, new Rgba32(255, 255, 255, 255));
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(4)
+            .WithStandardBaseAssets()
+            .WithHdBaseAssets(HdBaseAssetSize, HdHitcircleColor, HdOverlayColor)
+            .WithSdNumber(1, SkinFixtureBuilder.DefaultSdNumberSize)
+            .WithHdNumber(5, HdNumberSize)
+            .Build();
 
         var generator = CreateOrchestrator();
 
         var result = await generator.GenerateAsync(
-            CreateRequest(skinDir.RootPath, processHd: false, backupFiles: true, enableTripleStacking: false));
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: true, enableTripleStacking: false));
 
         Assert.Equal(GenerationStatus.Succeeded, result.Status);
 
-        var backupDir = Path.Combine(skinDir.RootPath, SkinAssetNames.BackupFolder);
+        var backupDir = Path.Combine(fixture.RootPath, SkinAssetNames.BackupFolder);
         Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.Hitcircle)));
         Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.HitcircleOverlay)));
         Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.WithHd(SkinAssetNames.Hitcircle))));
         Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.WithHd(SkinAssetNames.HitcircleOverlay))));
-        Assert.True(File.Exists(SkinTestHelper.ResolvePrefixPath(backupDir, prefix, "1")));
-        Assert.True(File.Exists(SkinTestHelper.ResolvePrefixPath(backupDir, prefix, "5", SkinAssetNames.HdSuffix)));
+        Assert.True(File.Exists(SkinTestHelper.ResolvePrefixPath(backupDir, fixture.Prefix, "1")));
+        Assert.True(File.Exists(SkinTestHelper.ResolvePrefixPath(backupDir, fixture.Prefix, "5", SkinAssetNames.HdSuffix)));
         Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.SkinIni)));
 
         var backedUpSkinIni = File.ReadAllText(Path.Combine(backupDir, SkinAssetNames.SkinIni));
@@ -94,56 +99,56 @@ public sealed class InstaFadeGeneratorTests
     public async Task GenerateAsync_Template1_SkipsHdWhenRequestedWithoutRequiredHdAssets()
     {
         using var skinDir = new TestSkinDirectory();
-        var templateContent = SkinIniTemplateFixture.GetTemplateContent(1);
-        var prefix = SkinIniTemplateFixture.ParseSupportedFields(templateContent).HitCirclePrefix;
-        SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, 1);
-        CreateBaseAssets(skinDir.RootPath);
-        SkinTestHelper.CreateNumberAssets(skinDir.RootPath, prefix);
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(1)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
         var progress = new RecordingProgress();
         var generator = CreateOrchestrator();
 
         var result = await generator.GenerateAsync(
-            CreateRequest(skinDir.RootPath, processHd: true, backupFiles: false, enableTripleStacking: false),
+            CreateRequest(fixture.RootPath, processHd: true, backupFiles: false, enableTripleStacking: false),
             progress);
 
         Assert.Equal(GenerationStatus.Succeeded, result.Status);
         Assert.Contains(progress.Entries, entry => entry.Phase == GenerationPhase.ProcessingHd && entry.Warning == GenerationError.MissingHdAsset);
-        Assert.False(File.Exists(SkinTestHelper.ResolvePrefixPath(skinDir.RootPath, prefix, "1", SkinAssetNames.HdSuffix)));
+        Assert.False(File.Exists(SkinTestHelper.ResolvePrefixPath(fixture.RootPath, fixture.Prefix, "1", SkinAssetNames.HdSuffix)));
 
-        var updatedSkinIni = File.ReadAllText(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni));
-        SkinIniTemplateFixture.AssertUpdatedSkinIni(templateContent, updatedSkinIni, "10,20,30", 5);
+        var updatedSkinIni = File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni));
+        SkinIniTemplateFixture.AssertUpdatedSkinIni(fixture.TemplateNumber, updatedSkinIni, "10,20,30", 5);
     }
 
     [Fact]
     public async Task GenerateAsync_Template3_TripleStackingRestoresMergedBaseAssetsAndKeepsMania()
     {
         using var skinDir = new TestSkinDirectory();
-        var templateContent = SkinIniTemplateFixture.GetTemplateContent(3);
-        var prefix = SkinIniTemplateFixture.ParseSupportedFields(templateContent).HitCirclePrefix;
-        SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, 3);
-        CreateBaseAssets(skinDir.RootPath);
-        SkinTestHelper.CreateNumberAssets(skinDir.RootPath, prefix);
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(3)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
         var generator = CreateOrchestrator();
 
         var result = await generator.GenerateAsync(
-            CreateRequest(skinDir.RootPath, processHd: false, backupFiles: false, enableTripleStacking: true));
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: false, enableTripleStacking: true));
 
         Assert.Equal(GenerationStatus.Succeeded, result.Status);
 
-        using var hitcircle = SkinTestHelper.LoadPng(Path.Combine(skinDir.RootPath, SkinAssetNames.Hitcircle));
-        using var overlay = SkinTestHelper.LoadPng(Path.Combine(skinDir.RootPath, SkinAssetNames.HitcircleOverlay));
+        using var hitcircle = SkinTestHelper.LoadPng(Path.Combine(fixture.RootPath, SkinAssetNames.Hitcircle));
+        using var overlay = SkinTestHelper.LoadPng(Path.Combine(fixture.RootPath, SkinAssetNames.HitcircleOverlay));
 
-        Assert.Equal(4, hitcircle.Width);
-        Assert.Equal(4, hitcircle.Height);
-        Assert.Equal(4, overlay.Width);
-        Assert.Equal(4, overlay.Height);
+        Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, hitcircle.Width);
+        Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, hitcircle.Height);
+        Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, overlay.Width);
+        Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, overlay.Height);
         Assert.Equal(hitcircle[0, 0], overlay[0, 0]);
         Assert.Equal(hitcircle[2, 2], overlay[2, 2]);
-        Assert.Equal(new Rgba32(255, 0, 0, 255), hitcircle[0, 0]);
-        Assert.Equal(new Rgba32(0, 255, 0, 255), hitcircle[2, 2]);
+        Assert.Equal(SkinFixtureBuilder.DefaultHitcircleColor, hitcircle[0, 0]);
+        Assert.Equal(SkinFixtureBuilder.DefaultOverlayColor, hitcircle[2, 2]);
 
-        var updatedSkinIni = File.ReadAllText(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni));
-        SkinIniTemplateFixture.AssertUpdatedSkinIni(templateContent, updatedSkinIni, "10,20,30", 5);
+        var updatedSkinIni = File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni));
+        SkinIniTemplateFixture.AssertUpdatedSkinIni(fixture.TemplateNumber, updatedSkinIni, "10,20,30", 5);
     }
 
     private static IGenerationService CreateOrchestrator()
@@ -169,22 +174,6 @@ public sealed class InstaFadeGeneratorTests
             processHd,
             backupFiles,
             enableTripleStacking);
-    }
-
-    private static void CreateBaseAssets(string skinFolder)
-    {
-        SkinTestHelper.WriteFilledPng(Path.Combine(skinFolder, SkinAssetNames.Hitcircle), 4, 4, new Rgba32(255, 0, 0, 255));
-        SkinTestHelper.WritePng(
-            Path.Combine(skinFolder, SkinAssetNames.HitcircleOverlay),
-            4,
-            4,
-            image =>
-            {
-                image[1, 1] = new Rgba32(0, 255, 0, 255);
-                image[1, 2] = new Rgba32(0, 255, 0, 255);
-                image[2, 1] = new Rgba32(0, 255, 0, 255);
-                image[2, 2] = new Rgba32(0, 255, 0, 255);
-            });
     }
 
     private sealed class RecordingProgress : IProgress<GenerationProgress>
