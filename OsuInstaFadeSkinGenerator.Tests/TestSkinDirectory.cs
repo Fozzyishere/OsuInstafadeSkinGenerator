@@ -3,6 +3,7 @@ namespace OsuInstaFadeSkinGenerator.Tests;
 internal sealed class TestSkinDirectory : IDisposable
 {
     private const int RetryDelayMilliseconds = 100;
+    private const int MaxDeleteAttempts = 2;
 
     public TestSkinDirectory()
     {
@@ -23,36 +24,23 @@ internal sealed class TestSkinDirectory : IDisposable
             return;
         }
 
-        try
+        for (var attempt = 1; attempt <= MaxDeleteAttempts; attempt++)
         {
-            Directory.Delete(this.RootPath, recursive: true);
-        }
-        catch (IOException)
-        {
-            Thread.Sleep(RetryDelayMilliseconds);
             try
             {
                 Directory.Delete(this.RootPath, recursive: true);
+                return;
             }
-            catch (IOException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
-        }
-        catch (UnauthorizedAccessException)
-        {
-            Thread.Sleep(RetryDelayMilliseconds);
-            try
-            {
-                Directory.Delete(this.RootPath, recursive: true);
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
+                if (attempt == MaxDeleteAttempts)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"Test cleanup warning: failed to delete temporary folder '{this.RootPath}' after {MaxDeleteAttempts} attempts. {ex.GetType().Name}: {ex.Message}");
+                    return;
+                }
+
+                Thread.Sleep(RetryDelayMilliseconds);
             }
         }
     }

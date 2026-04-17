@@ -124,10 +124,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var progress = new Progress<GenerationProgress>(this.Log.ReportProgress);
             var outcome = await this.generationService.GenerateAsync(request, progress, this.generationCts.Token);
 
-            this.Log.ProgressValue = 100;
             switch (outcome.Status)
             {
                 case GenerationStatus.Succeeded:
+                    this.Log.ProgressValue = 100;
                     this.ClearValidationError(GenerationValidationKey);
                     if (!string.IsNullOrEmpty(outcome.DetailMessage))
                     {
