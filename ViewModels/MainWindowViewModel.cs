@@ -520,21 +520,20 @@ public sealed class MainWindowViewModel : ViewModelBase
             return false;
         }
 
-        string skinFolderPath;
-        switch (this.inputValidationService.ValidateSkinFolder(this.SkinFolderPath, requireValue: true))
+        var folderValidation = this.inputValidationService.ValidateSkinFolder(this.SkinFolderPath, requireValue: true);
+        if (folderValidation is SkinFolderValidation.Invalid invalidFolder)
         {
-            case SkinFolderValidation.Invalid invalid:
-                this.SetValidationError(SkinFolderValidationKey, invalid.Message);
-                return false;
-            case SkinFolderValidation.Empty:
-                return false;
-            case SkinFolderValidation.Valid valid:
-                this.ClearValidationError(SkinFolderValidationKey);
-                skinFolderPath = valid.SkinFolderPath;
-                break;
-            default:
-                return false;
+            this.SetValidationError(SkinFolderValidationKey, invalidFolder.Message);
+            return false;
         }
+
+        if (folderValidation is not SkinFolderValidation.Valid validFolder)
+        {
+            return false;
+        }
+
+        this.ClearValidationError(SkinFolderValidationKey);
+        var skinFolderPath = validFolder.SkinFolderPath;
 
         if (!string.Equals(this.activeSkinFolderPath, skinFolderPath, StringComparison.OrdinalIgnoreCase))
         {

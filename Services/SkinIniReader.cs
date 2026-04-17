@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using OsuInstaFadeSkinGenerator.Models;
 
@@ -157,7 +158,7 @@ public sealed class SkinIniReader : ISkinIniReader
             this.Author,
             this.Version,
             this.HitCircleOverlayAboveNumber,
-            this.ComboColours,
+            new ReadOnlyCollection<(int Index, RgbColor Color)>(this.ComboColours.ToArray()),
             this.SliderBorder,
             this.SliderTrackOverride,
             this.HitCirclePrefix,

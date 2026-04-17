@@ -15,7 +15,7 @@ public sealed record SkinConfig(
 {
     private static readonly char[] PrefixSeparators = ['/', '\\'];
 
-    public string HitCirclePrefixDirectory { get; } = ComputePrefixDir(HitCirclePrefix);
+    public string HitCirclePrefixDirectory => ComputePrefixDir(this.HitCirclePrefix);
 
     private static string ComputePrefixDir(string prefix)
     {
