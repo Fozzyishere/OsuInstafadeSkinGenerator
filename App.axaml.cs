@@ -1,14 +1,20 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using OsuInstaFadeSkinGenerator.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using OsuInstaFadeSkinGenerator.Presentation.Composition;
 using OsuInstaFadeSkinGenerator.ViewModels;
 using OsuInstaFadeSkinGenerator.Views;
 
 namespace OsuInstaFadeSkinGenerator;
 
-public partial class App : Application
+public partial class App : Avalonia.Application
 {
+    private IHost? host;
+
+    public IServiceProvider? Services => this.host?.Services;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -18,17 +24,18 @@ public partial class App : Application
     {
         if (this.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var inputValidationService = new InputValidationService();
-            var skinIniReader = new SkinIniReader();
-            var skinIniWriter = new SkinIniWriter();
-            var windowInteractionService = new WindowInteractionService();
-            var viewModel = new MainWindowViewModel(
-                inputValidationService,
-                skinIniReader,
-                new InstaFadeGenerator(skinIniReader, skinIniWriter),
-                windowInteractionService);
+            var builder = Host.CreateApplicationBuilder();
+            builder.Services.AddGeneratorApp();
+            this.host = builder.Build();
 
-            desktop.MainWindow = new MainWindow(viewModel, windowInteractionService);
+            var mainWindow = this.host.Services.GetRequiredService<MainWindow>();
+            mainWindow.DataContext = this.host.Services.GetRequiredService<MainWindowViewModel>();
+            desktop.MainWindow = mainWindow;
+            desktop.Exit += (_, _) =>
+            {
+                this.host?.Dispose();
+                this.host = null;
+            };
         }
 
         base.OnFrameworkInitializationCompleted();

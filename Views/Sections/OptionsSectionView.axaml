@@ -1,0 +1,31 @@
+<UserControl
+    x:Class="OsuInstaFadeSkinGenerator.Views.Sections.OptionsSectionView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:sections="using:OsuInstaFadeSkinGenerator.ViewModels.Sections"
+    d:DesignHeight="100"
+    d:DesignWidth="600"
+    x:DataType="sections:GenerationOptionsViewModel"
+    mc:Ignorable="d">
+    <StackPanel Spacing="6">
+        <TextBlock
+            Classes="section-header"
+            Text="OPTIONS" />
+        <StackPanel Spacing="4">
+            <CheckBox
+                Content="Backup original files before modifying"
+                IsChecked="{Binding BackupFiles}"
+                ToolTip.Tip="Copy the current hitcircle, hitcircleoverlay, numbered circle assets, and skin.ini before overwriting them. Recommended because generation is destructive." />
+            <CheckBox
+                Content="Process @2x (HD) variants"
+                IsChecked="{Binding ProcessHd}"
+                ToolTip.Tip="Generate the @2x.png high-definition variants as well. Use this if the skin includes HD assets, which osu! detects through the @2x suffix." />
+            <CheckBox
+                Content="Triplestacked (brighter circles for HD/DT)"
+                IsChecked="{Binding EnableTripleStacking}"
+                ToolTip.Tip="Keep stacked hitcircle, and hitcircleoverlay instead of making them transparent to make the skin brighter." />
+        </StackPanel>
+    </StackPanel>
+</UserControl>

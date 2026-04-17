@@ -1,0 +1,69 @@
+<UserControl
+    x:Class="OsuInstaFadeSkinGenerator.Views.Sections.LogSectionView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:sections="using:OsuInstaFadeSkinGenerator.ViewModels.Sections"
+    d:DesignHeight="240"
+    d:DesignWidth="600"
+    x:DataType="sections:GenerationLogViewModel"
+    mc:Ignorable="d">
+    <Grid RowDefinitions="*,Auto">
+        <Border
+            Classes="panel log-panel"
+            Grid.Row="0"
+            Margin="0,0,0,14"
+            Padding="10">
+            <Grid RowDefinitions="Auto,*">
+                <Grid
+                    Grid.Row="0"
+                    Margin="0,0,0,8"
+                    ColumnDefinitions="*,Auto">
+                    <TextBlock
+                        Classes="section-header"
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        Text="LOGS" />
+                    <Button
+                        Classes="log-copy-button"
+                        Grid.Column="1"
+                        Command="{Binding CopyLogsCommand}"
+                        Content="Copy"
+                        ToolTip.Tip="Copy the full log output so you can share it when asking for help." />
+                </Grid>
+
+                <TextBox
+                    Classes="log-output"
+                    Grid.Row="1"
+                    AcceptsReturn="True"
+                    IsReadOnly="True"
+                    Text="{Binding LogText}"
+                    TextWrapping="NoWrap" />
+            </Grid>
+        </Border>
+
+        <Grid
+            Grid.Row="1"
+            ColumnDefinitions="*,Auto"
+            VerticalAlignment="Center">
+            <ProgressBar
+                Grid.Column="0"
+                Height="10"
+                Margin="0,0,12,0"
+                VerticalAlignment="Center"
+                Maximum="100"
+                Minimum="0"
+                Value="{Binding ProgressValue}" />
+            <TextBlock
+                Classes="subtle"
+                Grid.Column="1"
+                MinWidth="42"
+                VerticalAlignment="Center"
+                FontSize="11"
+                FontWeight="Bold"
+                TextAlignment="Right"
+                Text="{Binding ProgressValue, StringFormat={}{0:F0}%}" />
+        </Grid>
+    </Grid>
+</UserControl>

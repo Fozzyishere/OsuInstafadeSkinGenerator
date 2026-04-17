@@ -1,0 +1,107 @@
+<UserControl
+    x:Class="OsuInstaFadeSkinGenerator.Views.Sections.ColourSectionView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:sections="using:OsuInstaFadeSkinGenerator.ViewModels.Sections"
+    d:DesignHeight="140"
+    d:DesignWidth="600"
+    x:DataType="sections:ColourSectionViewModel"
+    mc:Ignorable="d">
+    <StackPanel Spacing="12">
+        <StackPanel Spacing="6">
+            <TextBlock
+                Classes="section-header"
+                Text="COMBO COLOUR" />
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*">
+                <TextBlock
+                    Classes="subtle"
+                    Grid.Column="0"
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="Bold"
+                    Text="R" />
+                <TextBox
+                    Grid.Column="1"
+                    Width="52"
+                    Margin="0,0,8,0"
+                    Text="{Binding ColourRText, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip.Tip="Red channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
+
+                <TextBlock
+                    Classes="subtle"
+                    Grid.Column="2"
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="Bold"
+                    Text="G" />
+                <TextBox
+                    Grid.Column="3"
+                    Width="52"
+                    Margin="0,0,8,0"
+                    Text="{Binding ColourGText, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip.Tip="Green channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
+
+                <TextBlock
+                    Classes="subtle"
+                    Grid.Column="4"
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="Bold"
+                    Text="B" />
+                <TextBox
+                    Grid.Column="5"
+                    Width="52"
+                    Margin="0,0,8,0"
+                    Text="{Binding ColourBText, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip.Tip="Blue channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
+
+                <Button
+                    Classes="primary"
+                    Grid.Column="6"
+                    Margin="4,0,0,0"
+                    Command="{Binding ApplyRgbCommand}"
+                    Content="Apply"
+                    ToolTip.Tip="Apply the RGB draft to confirm the Combo1 colour and update the preview." />
+
+                <Border
+                    Classes="colour-preview"
+                    Grid.Column="7"
+                    Width="36"
+                    Height="36"
+                    Margin="12,0,0,0"
+                    HorizontalAlignment="Left"
+                    Background="{Binding ColourPreviewBrush}"
+                    CornerRadius="8"
+                    ToolTip.Tip="Preview of the currently applied Combo1 colour that will tint the generated hitcircle and approach circle." />
+            </Grid>
+        </StackPanel>
+
+        <Grid ColumnDefinitions="Auto,Auto,Auto">
+            <TextBlock
+                Classes="subtle"
+                Grid.Column="0"
+                Margin="0,0,8,0"
+                VerticalAlignment="Center"
+                FontSize="12"
+                FontWeight="Bold"
+                Text="HEX" />
+            <TextBox
+                Grid.Column="1"
+                Width="110"
+                Margin="0,0,8,0"
+                Text="{Binding ColourHex, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip.Tip="Alternative draft colour input in #RRGGBB format. Press Apply to confirm it and sync the RGB fields." />
+            <Button
+                Classes="primary"
+                Grid.Column="2"
+                Command="{Binding ApplyHexCommand}"
+                Content="Apply"
+                ToolTip.Tip="Apply the hex draft to confirm the Combo1 colour, sync the RGB boxes, and update the preview." />
+        </Grid>
+    </StackPanel>
+</UserControl>

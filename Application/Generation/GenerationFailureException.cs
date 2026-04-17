@@ -1,0 +1,15 @@
+using System;
+using OsuInstaFadeSkinGenerator.Domain;
+
+namespace OsuInstaFadeSkinGenerator.Application.Generation;
+
+public sealed class GenerationFailureException : Exception
+{
+    public GenerationFailureException(GenerationError error, string message, Exception? innerException = null)
+        : base(message, innerException)
+    {
+        this.Error = error;
+    }
+
+    public GenerationError Error { get; }
+}

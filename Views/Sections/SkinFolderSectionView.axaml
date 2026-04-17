@@ -1,0 +1,37 @@
+<UserControl
+    x:Class="OsuInstaFadeSkinGenerator.Views.Sections.SkinFolderSectionView"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:behaviors="using:OsuInstaFadeSkinGenerator.Views.Behaviors"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:sections="using:OsuInstaFadeSkinGenerator.ViewModels.Sections"
+    d:DesignHeight="80"
+    d:DesignWidth="600"
+    x:DataType="sections:SkinFolderSectionViewModel"
+    mc:Ignorable="d">
+    <StackPanel Spacing="6">
+        <TextBlock
+            Classes="section-header"
+            Text="SKIN FOLDER" />
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBox
+                Grid.Column="0"
+                Margin="0,0,8,0"
+                behaviors:LostFocusCommitBehavior.Command="{Binding ConfirmSkinFolderPathCommand}"
+                Text="{Binding SkinFolderPath, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip.Tip="Write or paste the path to the osu! skin folder. Clicking away or pressing Enter confirms and loads it."
+                Watermark="Select skin folder...">
+                <TextBox.KeyBindings>
+                    <KeyBinding Command="{Binding ConfirmSkinFolderPathCommand}" Gesture="Enter" />
+                </TextBox.KeyBindings>
+            </TextBox>
+            <Button
+                Classes="primary"
+                Grid.Column="1"
+                Command="{Binding BrowseCommand}"
+                Content="Browse"
+                ToolTip.Tip="Open a folder picker and choose the skin folder you want to convert to insta-fade hitcircles." />
+        </Grid>
+    </StackPanel>
+</UserControl>

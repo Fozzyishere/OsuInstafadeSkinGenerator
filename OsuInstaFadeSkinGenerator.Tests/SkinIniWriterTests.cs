@@ -1,13 +1,17 @@
-using OsuInstaFadeSkinGenerator.Services;
+using OsuInstaFadeSkinGenerator.Domain;
+using OsuInstaFadeSkinGenerator.Infrastructure.Io;
+using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
 public sealed class SkinIniWriterTests
 {
     [Theory]
+    [InlineData(1, 9, 8, 7, 22)]
     [InlineData(2, 7, 8, 9, 64)]
     [InlineData(3, 4, 5, 6, 77)]
-    public void Update_Template_RewritesSupportedFieldsAndPreservesOtherLines(
+    [InlineData(4, 250, 240, 230, 12)]
+    public async Task Update_Template_RewritesSupportedFieldsAndPreservesOtherLines(
         int templateNumber,
         byte comboR,
         byte comboG,
@@ -15,24 +19,23 @@ public sealed class SkinIniWriterTests
         int hitCircleOverlap)
     {
         using var skinDir = new TestSkinDirectory();
-        var originalContent = SkinIniTemplateFixture.GetTemplateContent(templateNumber);
         SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, templateNumber);
 
-        var writer = new SkinIniWriter();
-        var skinIniPath = Path.Combine(skinDir.RootPath, "skin.ini");
+        var writer = new SkinIniWriter(new PhysicalFileSystem());
+        var skinIniPath = Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni);
 
-        writer.Update(skinIniPath, comboR, comboG, comboB, hitCircleOverlap);
+        await writer.UpdateAsync(skinIniPath, new RgbColor(comboR, comboG, comboB), hitCircleOverlap, CancellationToken.None);
 
         var updated = File.ReadAllText(skinIniPath);
         SkinIniTemplateFixture.AssertUpdatedSkinIni(
-            originalContent,
+            templateNumber,
             updated,
             $"{comboR},{comboG},{comboB}",
             hitCircleOverlap);
     }
 
     [Fact]
-    public void Update_TemplateDerivedSparseIni_AppendsMissingSectionsAndUsesDetectedIndent()
+    public async Task Update_TemplateDerivedSparseIni_AppendsMissingSectionsAndUsesDetectedIndent()
     {
         using var skinDir = new TestSkinDirectory();
         SkinTestHelper.WriteSkinIni(
@@ -48,10 +51,10 @@ public sealed class SkinIniWriterTests
                 Version: latest
             """);
 
-        var writer = new SkinIniWriter();
-        var skinIniPath = Path.Combine(skinDir.RootPath, "skin.ini");
+        var writer = new SkinIniWriter(new PhysicalFileSystem());
+        var skinIniPath = Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni);
 
-        writer.Update(skinIniPath, 1, 2, 3, 55);
+        await writer.UpdateAsync(skinIniPath, new RgbColor(1, 2, 3), 55, CancellationToken.None);
 
         var updated = File.ReadAllText(skinIniPath);
 

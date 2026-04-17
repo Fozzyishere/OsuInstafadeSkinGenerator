@@ -1,17 +1,78 @@
 using System.Text.RegularExpressions;
-using OsuInstaFadeSkinGenerator.Models;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
 internal static class SkinIniTemplateFixture
 {
     private const string TemplatesDirectoryName = "skinini-test-template";
-    private const string GeneralSection = "[general]";
     private const string ColoursSection = "[colours]";
     private const string FontsSection = "[fonts]";
 
-    private static readonly Regex ComboKeyRegex = new(@"^Combo(\d+)$", RegexOptions.IgnoreCase);
     private static readonly Regex ComboLineRegex = new(@"^Combo\d+\s*:", RegexOptions.IgnoreCase);
+
+    public static readonly IReadOnlyDictionary<int, ExpectedSkinConfig> Expected = new Dictionary<int, ExpectedSkinConfig>
+    {
+        [1] = new(
+            Name: "-         《CK》 WhiteCat 2.1 ~ new",
+            Author: "cyperdark",
+            Version: "2.5",
+            HitCircleOverlayAboveNumber: true,
+            ComboColours:
+            [
+                (1, new RgbColor(206, 188, 178)),
+                (2, new RgbColor(237, 221, 213)),
+            ],
+            SliderBorder: new RgbColor(80, 80, 80),
+            SliderTrackOverride: new RgbColor(0, 0, 0),
+            HitCirclePrefix: "default",
+            HitCircleOverlap: 15),
+        [2] = new(
+            Name: "- JesusOmega {NM} 『Planets』 -",
+            Author: "JesusOmega",
+            Version: "latest",
+            HitCircleOverlayAboveNumber: true,
+            ComboColours:
+            [
+                (1, new RgbColor(255, 105, 125)),
+                (2, new RgbColor(224, 177, 252)),
+                (3, new RgbColor(131, 180, 252)),
+                (4, new RgbColor(88, 196, 112)),
+            ],
+            SliderBorder: new RgbColor(205, 192, 236),
+            SliderTrackOverride: new RgbColor(10, 10, 10),
+            HitCirclePrefix: "default",
+            HitCircleOverlap: 26),
+        [3] = new(
+            Name: "BubbleSkin-EditCoquis v2",
+            Author: "Various",
+            Version: "2.0",
+            HitCircleOverlayAboveNumber: true,
+            ComboColours:
+            [
+                (1, new RgbColor(128, 131, 253)),
+                (2, new RgbColor(130, 253, 207)),
+                (3, new RgbColor(15, 177, 255)),
+            ],
+            SliderBorder: new RgbColor(70, 70, 70),
+            SliderTrackOverride: new RgbColor(0, 0, 20),
+            HitCirclePrefix: "default",
+            HitCircleOverlap: 10),
+        [4] = new(
+            Name: "-         《CK》 Bacon boi 1.0",
+            Author: "cyperdark",
+            Version: "2.5",
+            HitCircleOverlayAboveNumber: false,
+            ComboColours:
+            [
+                (1, new RgbColor(241, 214, 207)),
+                (2, new RgbColor(206, 137, 137)),
+            ],
+            SliderBorder: new RgbColor(113, 102, 98),
+            SliderTrackOverride: new RgbColor(20, 18, 17),
+            HitCirclePrefix: "default",
+            HitCircleOverlap: 25),
+    };
 
     public static string GetTemplateContent(int templateNumber)
     {
@@ -23,54 +84,11 @@ internal static class SkinIniTemplateFixture
         SkinTestHelper.WriteSkinIni(skinFolder, GetTemplateContent(templateNumber));
     }
 
-    public static SupportedSkinIniValues ParseSupportedFields(string content)
+    public static ExpectedSkinConfig GetExpected(int templateNumber) => Expected[templateNumber];
+
+    public static void AssertSupportedFieldsMatch(int templateNumber, SkinConfig actual)
     {
-        var expected = new SupportedSkinIniValues();
-        string currentSection = string.Empty;
-
-        foreach (var line in EnumerateLines(content))
-        {
-            var trimmed = line.Trim();
-            if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("//", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (TryGetSectionName(trimmed, out var sectionName))
-            {
-                currentSection = sectionName;
-                continue;
-            }
-
-            var colonIndex = trimmed.IndexOf(':');
-            if (colonIndex < 0)
-            {
-                continue;
-            }
-
-            var key = trimmed[..colonIndex].Trim();
-            var value = trimmed[(colonIndex + 1)..].Trim();
-
-            switch (currentSection)
-            {
-                case GeneralSection:
-                    ParseGeneral(expected, key, value);
-                    break;
-                case ColoursSection:
-                    ParseColours(expected, key, value);
-                    break;
-                case FontsSection:
-                    ParseFonts(expected, key, value);
-                    break;
-            }
-        }
-
-        return expected;
-    }
-
-    public static void AssertSupportedFieldsMatch(string content, SkinConfig actual)
-    {
-        var expected = ParseSupportedFields(content);
+        var expected = Expected[templateNumber];
 
         Assert.Equal(expected.Name, actual.Name);
         Assert.Equal(expected.Author, actual.Author);
@@ -78,22 +96,21 @@ internal static class SkinIniTemplateFixture
         Assert.Equal(expected.HitCircleOverlayAboveNumber, actual.HitCircleOverlayAboveNumber);
         Assert.Equal(expected.HitCirclePrefix, actual.HitCirclePrefix);
         Assert.Equal(expected.HitCircleOverlap, actual.HitCircleOverlap);
+        Assert.Equal(expected.SliderBorder, actual.SliderBorder);
+        Assert.Equal(expected.SliderTrackOverride, actual.SliderTrackOverride);
 
         Assert.Equal(expected.ComboColours.Count, actual.ComboColours.Count);
-        foreach (var expectedCombo in expected.ComboColours)
+        foreach (var (index, color) in expected.ComboColours)
         {
-            var actualCombo = Assert.Single(actual.ComboColours, combo => combo.Index == expectedCombo.Key);
-            Assert.Equal(expectedCombo.Value.R, actualCombo.R);
-            Assert.Equal(expectedCombo.Value.G, actualCombo.G);
-            Assert.Equal(expectedCombo.Value.B, actualCombo.B);
+            var match = Assert.Single(actual.ComboColours, combo => combo.Index == index);
+            Assert.Equal(color, match.Color);
         }
-
-        AssertRgbEquals(expected.SliderBorder, actual.SliderBorder);
-        AssertRgbEquals(expected.SliderTrackOverride, actual.SliderTrackOverride);
     }
 
-    public static void AssertUpdatedSkinIni(string originalContent, string updatedContent, string comboValue, int hitCircleOverlap)
+    public static void AssertUpdatedSkinIni(int templateNumber, string updatedContent, string comboValue, int hitCircleOverlap)
     {
+        var originalContent = GetTemplateContent(templateNumber);
+
         Assert.Contains($"Combo1: {comboValue}", updatedContent);
         Assert.Contains($"HitCircleOverlap: {hitCircleOverlap}", updatedContent);
 
@@ -128,6 +145,12 @@ internal static class SkinIniTemplateFixture
             .Split(Environment.NewLine, StringSplitOptions.None);
     }
 
+    private static int CountSectionHeaders(string content, string sectionName)
+    {
+        return EnumerateLines(content)
+            .Count(line => line.Trim().Equals($"[{sectionName}]", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static IEnumerable<string> GetLinesExpectedToRemainUnchanged(string content)
     {
         string currentSection = string.Empty;
@@ -160,129 +183,6 @@ internal static class SkinIniTemplateFixture
         }
     }
 
-    private static int CountSectionHeaders(string content, string sectionName)
-    {
-        return EnumerateLines(content)
-            .Count(line => line.Trim().Equals($"[{sectionName}]", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static void ParseGeneral(SupportedSkinIniValues expected, string key, string value)
-    {
-        switch (NormalizeKey(key))
-        {
-            case "name":
-                expected.Name = value;
-                break;
-            case "author":
-                expected.Author = value;
-                break;
-            case "version":
-                expected.Version = value;
-                break;
-            case "hitcircleoverlayabovenumber":
-            case "hitcircleoverlayabovenumer":
-                if (TryParseOsuBoolean(value, out var hitCircleOverlayAboveNumber))
-                {
-                    expected.HitCircleOverlayAboveNumber = hitCircleOverlayAboveNumber;
-                }
-
-                break;
-        }
-    }
-
-    private static void ParseColours(SupportedSkinIniValues expected, string key, string value)
-    {
-        var comboMatch = ComboKeyRegex.Match(key);
-        if (comboMatch.Success)
-        {
-            if (TryParseRgb(value, out var comboColour))
-            {
-                expected.ComboColours[int.Parse(comboMatch.Groups[1].Value)] = comboColour;
-            }
-
-            return;
-        }
-
-        switch (NormalizeKey(key))
-        {
-            case "sliderborder":
-                if (TryParseRgb(value, out var sliderBorder))
-                {
-                    expected.SliderBorder = sliderBorder;
-                }
-
-                break;
-            case "slidertrackoverride":
-                if (TryParseRgb(value, out var sliderTrackOverride))
-                {
-                    expected.SliderTrackOverride = sliderTrackOverride;
-                }
-
-                break;
-        }
-    }
-
-    private static void ParseFonts(SupportedSkinIniValues expected, string key, string value)
-    {
-        switch (NormalizeKey(key))
-        {
-            case "hitcircleprefix":
-                if (!string.IsNullOrEmpty(value))
-                {
-                    expected.HitCirclePrefix = value;
-                }
-
-                break;
-            case "hitcircleoverlap":
-                if (int.TryParse(TrimInlineComment(value), out var hitCircleOverlap))
-                {
-                    expected.HitCircleOverlap = hitCircleOverlap;
-                }
-
-                break;
-        }
-    }
-
-    private static bool TryParseRgb(string value, out RgbTriplet rgb)
-    {
-        rgb = default;
-        var parts = TrimInlineComment(value).Split(',');
-        if (parts.Length < 3
-            || !byte.TryParse(parts[0].Trim(), out var r)
-            || !byte.TryParse(parts[1].Trim(), out var g)
-            || !byte.TryParse(parts[2].Trim(), out var b))
-        {
-            return false;
-        }
-
-        rgb = new RgbTriplet(r, g, b);
-        return true;
-    }
-
-    private static bool TryParseOsuBoolean(string value, out bool parsedValue)
-    {
-        switch (TrimInlineComment(value))
-        {
-            case "0":
-                parsedValue = false;
-                return true;
-            case "1":
-                parsedValue = true;
-                return true;
-            default:
-                parsedValue = false;
-                return false;
-        }
-    }
-
-    private static string TrimInlineComment(string value)
-    {
-        var commentIndex = value.IndexOf("//", StringComparison.Ordinal);
-        return commentIndex >= 0 ? value[..commentIndex].TrimEnd() : value.TrimEnd();
-    }
-
-    private static string NormalizeKey(string key) => key.ToLowerInvariant();
-
     private static bool TryGetSectionName(string line, out string sectionName)
     {
         sectionName = string.Empty;
@@ -294,41 +194,15 @@ internal static class SkinIniTemplateFixture
         sectionName = line.ToLowerInvariant();
         return true;
     }
-
-    private static void AssertRgbEquals(RgbTriplet? expected, RgbColour? actual)
-    {
-        if (expected is null)
-        {
-            Assert.Null(actual);
-            return;
-        }
-
-        Assert.NotNull(actual);
-        Assert.Equal(expected.Value.R, actual!.R);
-        Assert.Equal(expected.Value.G, actual.G);
-        Assert.Equal(expected.Value.B, actual.B);
-    }
-
-    internal sealed class SupportedSkinIniValues
-    {
-        public string Name { get; set; } = "Unknown";
-
-        public string Author { get; set; } = string.Empty;
-
-        public string Version { get; set; } = "1.0";
-
-        public bool HitCircleOverlayAboveNumber { get; set; } = true;
-
-        public Dictionary<int, RgbTriplet> ComboColours { get; } = [];
-
-        public RgbTriplet? SliderBorder { get; set; }
-
-        public RgbTriplet? SliderTrackOverride { get; set; }
-
-        public string HitCirclePrefix { get; set; } = "default";
-
-        public int HitCircleOverlap { get; set; } = -2;
-    }
-
-    internal readonly record struct RgbTriplet(byte R, byte G, byte B);
 }
+
+internal sealed record ExpectedSkinConfig(
+    string Name,
+    string Author,
+    string Version,
+    bool HitCircleOverlayAboveNumber,
+    IReadOnlyList<(int Index, RgbColor Color)> ComboColours,
+    RgbColor? SliderBorder,
+    RgbColor? SliderTrackOverride,
+    string HitCirclePrefix,
+    int HitCircleOverlap);

@@ -1,3 +1,4 @@
+using OsuInstaFadeSkinGenerator.Domain;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -8,7 +9,7 @@ internal static class SkinTestHelper
     public static void WriteSkinIni(string skinFolder, string content)
     {
         File.WriteAllText(
-            Path.Combine(skinFolder, "skin.ini"),
+            Path.Combine(skinFolder, SkinAssetNames.SkinIni),
             content.ReplaceLineEndings(Environment.NewLine));
     }
 
