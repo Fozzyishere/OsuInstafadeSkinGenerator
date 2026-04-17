@@ -43,9 +43,8 @@
             <GradientStop Color="#FFD91C5C" Offset="1" />
         </LinearGradientBrush>
 
-        <FontFamily x:Key="AllerFontFamily">avares://OsuInstaFadeSkinGenerator/public/fonts/aller#Aller</FontFamily>
-        <FontFamily x:Key="AllerDisplayFontFamily">avares://OsuInstaFadeSkinGenerator/public/fonts/aller#Aller Display</FontFamily>
-        <FontFamily x:Key="MonoFontFamily">Cascadia Mono</FontFamily>
+        <FontFamily x:Key="AllerFontFamily">Aller, avares://OsuInstaFadeSkinGenerator/public/fonts/aller#Aller</FontFamily>
+        <FontFamily x:Key="MonoFontFamily">Cascadia Mono, avares://OsuInstaFadeSkinGenerator/public/fonts/cascadia#Cascadia Mono, Consolas, Courier New</FontFamily>
     </Application.Resources>
 
     <Application.Styles>
