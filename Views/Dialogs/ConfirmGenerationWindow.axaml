@@ -5,23 +5,37 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="Confirm Generation"
-    Width="430"
-    Height="220"
+    Width="460"
+    Height="240"
     CanResize="False"
     WindowStartupLocation="CenterOwner"
     SystemDecorations="Full"
     mc:Ignorable="d">
 
-    <StackPanel Margin="20" Spacing="0">
-        <TextBlock
-            Classes="window-title"
-            Margin="0,0,0,10"
-            FontWeight="Bold"
-            Text="This action modifies the selected skin." />
+    <StackPanel Margin="24" Spacing="0">
+        <StackPanel
+            Margin="0,0,0,6"
+            Orientation="Horizontal"
+            Spacing="10">
+            <Rectangle
+                Width="3"
+                Height="20"
+                VerticalAlignment="Center"
+                Fill="{StaticResource OsuHeaderAccentBrush}"
+                RadiusX="1.5"
+                RadiusY="1.5" />
+            <TextBlock
+                Classes="window-title"
+                VerticalAlignment="Center"
+                FontSize="14"
+                FontWeight="Bold"
+                Text="This action modifies the selected skin." />
+        </StackPanel>
 
         <TextBlock
             Classes="subtle"
-            Margin="0,0,0,20"
+            Margin="0,0,0,24"
+            FontSize="12"
             TextWrapping="Wrap"
             Text="Generating insta-fade files will overwrite skin assets. Running it multiple times on the same skin can cause broken files, overwrite existing backup files (if selected) and make the skin unplayable. Do you want to continue?" />
 

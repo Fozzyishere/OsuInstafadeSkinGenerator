@@ -17,122 +17,152 @@
     x:DataType="vm:MainWindowViewModel"
     mc:Ignorable="d">
 
-    <Grid Margin="20" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,Auto">
+    <Grid Margin="24,22,24,22" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,Auto">
 
-        <TextBlock
+        <StackPanel
             Grid.Row="0"
-            Classes="window-title"
-            Margin="0,0,0,16"
-            HorizontalAlignment="Center"
-            FontSize="20"
-            FontWeight="Bold"
-            Text="osu! insta-fade skin generator" />
+            Margin="0,0,0,18"
+            Orientation="Horizontal"
+            Spacing="12">
+            <Rectangle
+                Width="4"
+                Height="38"
+                VerticalAlignment="Center"
+                Fill="{StaticResource OsuHeaderAccentBrush}"
+                RadiusX="2"
+                RadiusY="2" />
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+                <TextBlock
+                    Classes="hero-title"
+                    Text="osu! insta-fade skin generator" />
+                <TextBlock
+                    Classes="subtle"
+                    FontSize="11"
+                    Text="Convert a skin folder to insta-fade hitcircles." />
+            </StackPanel>
+        </StackPanel>
 
-        <Grid
+        <StackPanel
             Grid.Row="1"
             Margin="0,0,0,12"
-            ColumnDefinitions="*,Auto">
-            <TextBox
-                Grid.Column="0"
-                Margin="0,0,8,0"
-                IsEnabled="{Binding IsInputEnabled}"
-                LostFocus="SkinFolderTextBox_LostFocus"
-                Text="{Binding SkinFolderPath, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip.Tip="Write or paste the path to the osu! skin folder. Clicking away or pressing Enter confirms and loads it."
-                Watermark="Select skin folder...">
-                <TextBox.KeyBindings>
-                    <KeyBinding Command="{Binding ConfirmSkinFolderPathCommand}" Gesture="Enter" />
-                </TextBox.KeyBindings>
-            </TextBox>
-            <Button
-                Classes="primary"
-                Grid.Column="1"
-                Command="{Binding BrowseCommand}"
-                Content="Browse"
-                ToolTip.Tip="Open a folder picker and choose the skin folder you want to convert to insta-fade hitcircles." />
-        </Grid>
+            Spacing="6">
+            <TextBlock
+                Classes="section-header"
+                Text="SKIN FOLDER" />
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox
+                    Grid.Column="0"
+                    Margin="0,0,8,0"
+                    IsEnabled="{Binding IsInputEnabled}"
+                    LostFocus="SkinFolderTextBox_LostFocus"
+                    Text="{Binding SkinFolderPath, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip.Tip="Write or paste the path to the osu! skin folder. Clicking away or pressing Enter confirms and loads it."
+                    Watermark="Select skin folder...">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Command="{Binding ConfirmSkinFolderPathCommand}" Gesture="Enter" />
+                    </TextBox.KeyBindings>
+                </TextBox>
+                <Button
+                    Classes="primary"
+                    Grid.Column="1"
+                    Command="{Binding BrowseCommand}"
+                    Content="Browse"
+                    ToolTip.Tip="Open a folder picker and choose the skin folder you want to convert to insta-fade hitcircles." />
+            </Grid>
+        </StackPanel>
 
-        <Grid
+        <StackPanel
             Grid.Row="2"
             Margin="0,0,0,12"
-            ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*">
+            Spacing="6">
             <TextBlock
-                Grid.Column="0"
-                Margin="0,0,8,0"
-                VerticalAlignment="Center"
-                Text="Combo Colour:" />
+                Classes="section-header"
+                Text="COMBO COLOUR" />
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,*">
+                <TextBlock
+                    Classes="subtle"
+                    Grid.Column="0"
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="Bold"
+                    Text="R" />
+                <TextBox
+                    Grid.Column="1"
+                    Width="52"
+                    Margin="0,0,8,0"
+                    IsEnabled="{Binding IsInputEnabled}"
+                    Text="{Binding ColourRText, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip.Tip="Red channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
 
-            <TextBlock
-                Grid.Column="1"
-                Margin="0,0,4,0"
-                VerticalAlignment="Center"
-                Text="R:" />
-            <TextBox
-                Grid.Column="2"
-                Width="50"
-                Margin="0,0,8,0"
-                IsEnabled="{Binding IsInputEnabled}"
-                Text="{Binding ColourRText, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip.Tip="Red channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
+                <TextBlock
+                    Classes="subtle"
+                    Grid.Column="2"
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="Bold"
+                    Text="G" />
+                <TextBox
+                    Grid.Column="3"
+                    Width="52"
+                    Margin="0,0,8,0"
+                    IsEnabled="{Binding IsInputEnabled}"
+                    Text="{Binding ColourGText, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip.Tip="Green channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
 
-            <TextBlock
-                Grid.Column="3"
-                Margin="0,0,4,0"
-                VerticalAlignment="Center"
-                Text="G:" />
-            <TextBox
-                Grid.Column="4"
-                Width="50"
-                Margin="0,0,8,0"
-                IsEnabled="{Binding IsInputEnabled}"
-                Text="{Binding ColourGText, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip.Tip="Green channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
+                <TextBlock
+                    Classes="subtle"
+                    Grid.Column="4"
+                    Margin="0,0,4,0"
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="Bold"
+                    Text="B" />
+                <TextBox
+                    Grid.Column="5"
+                    Width="52"
+                    Margin="0,0,8,0"
+                    IsEnabled="{Binding IsInputEnabled}"
+                    Text="{Binding ColourBText, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip.Tip="Blue channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
 
-            <TextBlock
-                Grid.Column="5"
-                Margin="0,0,4,0"
-                VerticalAlignment="Center"
-                Text="B:" />
-            <TextBox
-                Grid.Column="6"
-                Width="50"
-                Margin="0,0,8,0"
-                IsEnabled="{Binding IsInputEnabled}"
-                Text="{Binding ColourBText, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip.Tip="Blue channel draft for Combo1. Enter values from 0 to 255, then press Apply to confirm the RGB colour." />
+                <Button
+                    Classes="primary"
+                    Grid.Column="6"
+                    Margin="4,0,0,0"
+                    Command="{Binding ApplyRgbCommand}"
+                    Content="Apply"
+                    ToolTip.Tip="Apply the RGB draft to confirm the Combo1 colour and update the preview." />
 
-            <Border
-                Classes="colour-preview"
-                Grid.Column="7"
-                Width="32"
-                Height="32"
-                Margin="8,0,0,0"
-                HorizontalAlignment="Left"
-                Background="{Binding ColourPreviewBrush}"
-                CornerRadius="4"
-                ToolTip.Tip="Preview of the currently applied Combo1 colour that will tint the generated hitcircle and approach circle." />
-
-            <Button
-                Classes="primary"
-                Grid.Column="8"
-                Margin="8,0,0,0"
-                Command="{Binding ApplyRgbCommand}"
-                Content="Apply"
-                ToolTip.Tip="Apply the RGB draft to confirm the Combo1 colour and update the preview." />
-        </Grid>
+                <Border
+                    Classes="colour-preview"
+                    Grid.Column="7"
+                    Width="36"
+                    Height="36"
+                    Margin="12,0,0,0"
+                    HorizontalAlignment="Left"
+                    Background="{Binding ColourPreviewBrush}"
+                    CornerRadius="8"
+                    ToolTip.Tip="Preview of the currently applied Combo1 colour that will tint the generated hitcircle and approach circle." />
+            </Grid>
+        </StackPanel>
 
         <Grid
             Grid.Row="3"
-            Margin="0,0,0,12"
+            Margin="0,0,0,14"
             ColumnDefinitions="Auto,Auto,Auto">
             <TextBlock
+                Classes="subtle"
                 Grid.Column="0"
                 Margin="0,0,8,0"
                 VerticalAlignment="Center"
-                Text="Or hex:" />
+                FontSize="12"
+                FontWeight="Bold"
+                Text="HEX" />
             <TextBox
                 Grid.Column="1"
-                Width="100"
+                Width="110"
                 Margin="0,0,8,0"
                 IsEnabled="{Binding IsInputEnabled}"
                 Text="{Binding ColourHex, UpdateSourceTrigger=PropertyChanged}"
@@ -149,28 +179,33 @@
             Grid.Row="4"
             Margin="0,0,0,12"
             Spacing="6">
-            <CheckBox
-                Content="Backup original files before modifying"
-                IsChecked="{Binding BackupFiles}"
-                IsEnabled="{Binding IsInputEnabled}"
-                ToolTip.Tip="Copy the current hitcircle, hitcircleoverlay, numbered circle assets, and skin.ini before overwriting them. Recommended because generation is destructive." />
-            <CheckBox
-                Content="Process @2x (HD) variants"
-                IsChecked="{Binding ProcessHd}"
-                IsEnabled="{Binding IsInputEnabled}"
-                ToolTip.Tip="Generate the @2x.png high-definition variants as well. Use this if the skin includes HD assets, which osu! detects through the @2x suffix." />
-            <CheckBox
-                Content="Triplestacked (brighter circles for HD/DT)"
-                IsChecked="{Binding EnableTripleStacking}"
-                IsEnabled="{Binding IsInputEnabled}"
-                ToolTip.Tip="Keep stacked hitcircle, and hitcircleoverlay instead of making them transparent to make the skin brighter." />
+            <TextBlock
+                Classes="section-header"
+                Text="OPTIONS" />
+            <StackPanel Spacing="4">
+                <CheckBox
+                    Content="Backup original files before modifying"
+                    IsChecked="{Binding BackupFiles}"
+                    IsEnabled="{Binding IsInputEnabled}"
+                    ToolTip.Tip="Copy the current hitcircle, hitcircleoverlay, numbered circle assets, and skin.ini before overwriting them. Recommended because generation is destructive." />
+                <CheckBox
+                    Content="Process @2x (HD) variants"
+                    IsChecked="{Binding ProcessHd}"
+                    IsEnabled="{Binding IsInputEnabled}"
+                    ToolTip.Tip="Generate the @2x.png high-definition variants as well. Use this if the skin includes HD assets, which osu! detects through the @2x suffix." />
+                <CheckBox
+                    Content="Triplestacked (brighter circles for HD/DT)"
+                    IsChecked="{Binding EnableTripleStacking}"
+                    IsEnabled="{Binding IsInputEnabled}"
+                    ToolTip.Tip="Keep stacked hitcircle, and hitcircleoverlay instead of making them transparent to make the skin brighter." />
+            </StackPanel>
         </StackPanel>
 
         <Border
             Classes="panel error-panel"
             Grid.Row="5"
             Margin="0,0,0,12"
-            Padding="10,8"
+            Padding="12,10"
             IsVisible="{Binding HasErrors}">
             <TextBlock
                 Foreground="#FFFFD7D7"
@@ -182,29 +217,24 @@
         <Border
             Classes="panel log-panel"
             Grid.Row="6"
-            Margin="0,0,0,12"
-            Padding="8">
+            Margin="0,0,0,14"
+            Padding="10">
             <Grid RowDefinitions="Auto,*">
                 <Grid
                     Grid.Row="0"
                     Margin="0,0,0,8"
                     ColumnDefinitions="*,Auto">
                     <TextBlock
+                        Classes="section-header"
                         Grid.Column="0"
                         VerticalAlignment="Center"
-                        FontSize="12"
-                        FontWeight="SemiBold"
-                        Text="Logs" />
+                        Text="LOGS" />
                     <Button
-                        Classes="utility-icon-button"
+                        Classes="log-copy-button"
                         Grid.Column="1"
                         Command="{Binding CopyLogsCommand}"
-                        ToolTip.Tip="Copy the full log output so you can share it when asking for help.">
-                        <PathIcon
-                            Width="14"
-                            Height="14"
-                            Data="M 7,3 H 15 A 2,2 0 0 1 17,5 V 13 H 15 V 5 H 7 Z M 4,6 H 12 A 2,2 0 0 1 14,8 V 16 A 2,2 0 0 1 12,18 H 4 A 2,2 0 0 1 2,16 V 8 A 2,2 0 0 1 4,6 Z M 4,8 V 16 H 12 V 8 Z" />
-                    </Button>
+                        Content="Copy"
+                        ToolTip.Tip="Copy the full log output so you can share it when asking for help." />
                 </Grid>
 
                 <TextBox
@@ -217,23 +247,39 @@
             </Grid>
         </Border>
 
-        <ProgressBar
+        <Grid
             Grid.Row="7"
-            Height="8"
-            Margin="0,0,0,12"
-            Maximum="100"
-            Minimum="0"
-            Value="{Binding ProgressValue}" />
+            Margin="0,0,0,14"
+            ColumnDefinitions="*,Auto"
+            VerticalAlignment="Center">
+            <ProgressBar
+                Grid.Column="0"
+                Height="10"
+                Margin="0,0,12,0"
+                VerticalAlignment="Center"
+                Maximum="100"
+                Minimum="0"
+                Value="{Binding ProgressValue}" />
+            <TextBlock
+                Classes="subtle"
+                Grid.Column="1"
+                MinWidth="42"
+                VerticalAlignment="Center"
+                FontSize="11"
+                FontWeight="Bold"
+                TextAlignment="Right"
+                Text="{Binding ProgressValue, StringFormat={}{0:F0}%}" />
+        </Grid>
 
         <Button
             Classes="primary"
             Grid.Row="8"
-            Height="40"
+            Height="44"
             HorizontalAlignment="Stretch"
             HorizontalContentAlignment="Center"
             Command="{Binding GenerateCommand}"
             Content="Generate Insta-Fade"
-            FontSize="16"
+            FontSize="14"
             FontWeight="Bold"
             ToolTip.Tip="Proceed with creating insta-fade files for the selected skin." />
     </Grid>
