@@ -7,6 +7,7 @@ using OsuInstaFadeSkinGenerator.Infrastructure.Io;
 using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 using OsuInstaFadeSkinGenerator.Services;
 using OsuInstaFadeSkinGenerator.ViewModels;
+using OsuInstaFadeSkinGenerator.ViewModels.Sections;
 using OsuInstaFadeSkinGenerator.Views;
 
 namespace OsuInstaFadeSkinGenerator;
@@ -28,11 +29,18 @@ public partial class App : Avalonia.Application
             var skinIniWriter = new SkinIniWriter(fileSystem);
             var imageIo = new ImageSharpImageIo();
             var windowInteractionService = new WindowInteractionService();
+            var log = new GenerationLogViewModel(windowInteractionService);
+            var options = new GenerationOptionsViewModel();
+            var colour = new ColourSectionViewModel(inputValidationService);
+            var folder = new SkinFolderSectionViewModel(inputValidationService, skinIniReader, windowInteractionService);
             var viewModel = new MainWindowViewModel(
                 inputValidationService,
-                skinIniReader,
                 new InstaFadeGenerationOrchestrator(skinIniReader, skinIniWriter, fileSystem, imageIo),
-                windowInteractionService);
+                windowInteractionService,
+                folder,
+                colour,
+                options,
+                log);
 
             desktop.MainWindow = new MainWindow(viewModel, windowInteractionService);
         }

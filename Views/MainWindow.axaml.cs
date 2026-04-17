@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using OsuInstaFadeSkinGenerator.Services;
 using OsuInstaFadeSkinGenerator.ViewModels;
@@ -25,15 +24,6 @@ public partial class MainWindow : Window
         this.InitializeComponent();
         this.DataContext = viewModel;
         interactionService.Attach(this);
-    }
-
-    private void SkinFolderTextBox_LostFocus(object? sender, RoutedEventArgs e)
-    {
-        if (this.DataContext is MainWindowViewModel viewModel
-            && viewModel.ConfirmSkinFolderPathCommand.CanExecute(null))
-        {
-            viewModel.ConfirmSkinFolderPathCommand.Execute(null);
-        }
     }
 
     private void Window_PointerPressed(object? sender, PointerPressedEventArgs e)
