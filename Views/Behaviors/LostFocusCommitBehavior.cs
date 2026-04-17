@@ -39,6 +39,11 @@ public static class LostFocusCommitBehavior
             return;
         }
 
+        if (!control.IsEffectivelyEnabled)
+        {
+            return;
+        }
+
         var command = GetCommand(control);
         if (command is not null && command.CanExecute(null))
         {
