@@ -1,3 +1,4 @@
+using OsuInstaFadeSkinGenerator.Models;
 using OsuInstaFadeSkinGenerator.Services;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
@@ -19,7 +20,7 @@ public sealed class SkinIniWriterTests
         SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, templateNumber);
 
         var writer = new SkinIniWriter();
-        var skinIniPath = Path.Combine(skinDir.RootPath, "skin.ini");
+        var skinIniPath = Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni);
 
         writer.Update(skinIniPath, comboR, comboG, comboB, hitCircleOverlap);
 
@@ -49,7 +50,7 @@ public sealed class SkinIniWriterTests
             """);
 
         var writer = new SkinIniWriter();
-        var skinIniPath = Path.Combine(skinDir.RootPath, "skin.ini");
+        var skinIniPath = Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni);
 
         writer.Update(skinIniPath, 1, 2, 3, 55);
 

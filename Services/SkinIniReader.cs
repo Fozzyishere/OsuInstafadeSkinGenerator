@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using OsuInstaFadeSkinGenerator.Models;
 
 namespace OsuInstaFadeSkinGenerator.Services;
@@ -6,7 +9,7 @@ public sealed class SkinIniReader : ISkinIniReader
 {
     public SkinConfig Read(string skinIniPath)
     {
-        var config = new SkinConfig();
+        var builder = new SkinConfigBuilder();
         var lines = File.ReadAllLines(skinIniPath);
         string currentSection = string.Empty;
 
@@ -37,45 +40,45 @@ public sealed class SkinIniReader : ISkinIniReader
             switch (currentSection)
             {
                 case SkinIniCommon.GeneralSection:
-                    ParseGeneral(config, key, value);
+                    ParseGeneral(builder, key, value);
                     break;
                 case SkinIniCommon.ColoursSection:
-                    ParseColours(config, key, value);
+                    ParseColours(builder, key, value);
                     break;
                 case SkinIniCommon.FontsSection:
-                    ParseFonts(config, key, value);
+                    ParseFonts(builder, key, value);
                     break;
             }
         }
 
-        return config;
+        return builder.Build();
     }
 
-    private static void ParseGeneral(SkinConfig config, string key, string value)
+    private static void ParseGeneral(SkinConfigBuilder builder, string key, string value)
     {
         switch (SkinIniCommon.NormalizeKey(key))
         {
             case "name":
-                config.Name = value;
+                builder.Name = value;
                 break;
             case "author":
-                config.Author = value;
+                builder.Author = value;
                 break;
             case "version":
-                config.Version = value;
+                builder.Version = value;
                 break;
             case "hitcircleoverlayabovenumber":
             case "hitcircleoverlayabovenumer":
                 if (SkinIniCommon.TryParseOsuBoolean(value, out var hitCircleOverlayAboveNumber))
                 {
-                    config.HitCircleOverlayAboveNumber = hitCircleOverlayAboveNumber;
+                    builder.HitCircleOverlayAboveNumber = hitCircleOverlayAboveNumber;
                 }
 
                 break;
         }
     }
 
-    private static void ParseColours(SkinConfig config, string key, string value)
+    private static void ParseColours(SkinConfigBuilder builder, string key, string value)
     {
         var comboMatch = SkinIniCommon.ComboRegex().Match(key);
         if (comboMatch.Success)
@@ -83,7 +86,7 @@ public sealed class SkinIniReader : ISkinIniReader
             var index = int.Parse(comboMatch.Groups[1].Value);
             if (RgbColor.TryParseCsv(value, out var color))
             {
-                config.ComboColours.Add((index, color));
+                builder.ComboColours.Add((index, color));
             }
 
             return;
@@ -94,38 +97,70 @@ public sealed class SkinIniReader : ISkinIniReader
             case "sliderborder":
                 if (RgbColor.TryParseCsv(value, out var sliderBorder))
                 {
-                    config.SliderBorder = sliderBorder;
+                    builder.SliderBorder = sliderBorder;
                 }
 
                 break;
             case "slidertrackoverride":
                 if (RgbColor.TryParseCsv(value, out var sliderTrackOverride))
                 {
-                    config.SliderTrackOverride = sliderTrackOverride;
+                    builder.SliderTrackOverride = sliderTrackOverride;
                 }
 
                 break;
         }
     }
 
-    private static void ParseFonts(SkinConfig config, string key, string value)
+    private static void ParseFonts(SkinConfigBuilder builder, string key, string value)
     {
         switch (SkinIniCommon.NormalizeKey(key))
         {
             case "hitcircleprefix":
                 if (!string.IsNullOrEmpty(value))
                 {
-                    config.HitCirclePrefix = value;
+                    builder.HitCirclePrefix = value;
                 }
 
                 break;
             case "hitcircleoverlap":
                 if (int.TryParse(SkinIniCommon.TrimInlineComment(value), out var overlap))
                 {
-                    config.HitCircleOverlap = overlap;
+                    builder.HitCircleOverlap = overlap;
                 }
 
                 break;
         }
+    }
+
+    private sealed class SkinConfigBuilder
+    {
+        public string Name { get; set; } = "Unknown";
+
+        public string Author { get; set; } = string.Empty;
+
+        public string Version { get; set; } = "1.0";
+
+        public bool HitCircleOverlayAboveNumber { get; set; } = true;
+
+        public List<(int Index, RgbColor Color)> ComboColours { get; } = new();
+
+        public RgbColor? SliderBorder { get; set; }
+
+        public RgbColor? SliderTrackOverride { get; set; }
+
+        public string HitCirclePrefix { get; set; } = "default";
+
+        public int HitCircleOverlap { get; set; } = -2;
+
+        public SkinConfig Build() => new(
+            this.Name,
+            this.Author,
+            this.Version,
+            this.HitCircleOverlayAboveNumber,
+            this.ComboColours,
+            this.SliderBorder,
+            this.SliderTrackOverride,
+            this.HitCirclePrefix,
+            this.HitCircleOverlap);
     }
 }

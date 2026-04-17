@@ -1,31 +1,25 @@
+using System.Collections.Generic;
+
 namespace OsuInstaFadeSkinGenerator.Models;
 
-public class SkinConfig
+public sealed record SkinConfig(
+    string Name,
+    string Author,
+    string Version,
+    bool HitCircleOverlayAboveNumber,
+    IReadOnlyList<(int Index, RgbColor Color)> ComboColours,
+    RgbColor? SliderBorder,
+    RgbColor? SliderTrackOverride,
+    string HitCirclePrefix,
+    int HitCircleOverlap)
 {
-    public string Name { get; set; } = "Unknown";
+    private static readonly char[] PrefixSeparators = ['/', '\\'];
 
-    public string Author { get; set; } = string.Empty;
+    public string HitCirclePrefixDirectory { get; } = ComputePrefixDir(HitCirclePrefix);
 
-    public string Version { get; set; } = "1.0";
-
-    public bool HitCircleOverlayAboveNumber { get; set; } = true;
-
-    public List<(int Index, RgbColor Color)> ComboColours { get; set; } = new();
-
-    public RgbColor? SliderBorder { get; set; }
-
-    public RgbColor? SliderTrackOverride { get; set; }
-
-    public string HitCirclePrefix { get; set; } = "default";
-
-    public int HitCircleOverlap { get; set; } = -2;
-
-    public string HitCirclePrefixDirectory
+    private static string ComputePrefixDir(string prefix)
     {
-        get
-        {
-            var lastSep = this.HitCirclePrefix.LastIndexOfAny(new[] { '/', '\\' });
-            return lastSep >= 0 ? this.HitCirclePrefix[..lastSep] : string.Empty;
-        }
+        var lastSep = prefix.LastIndexOfAny(PrefixSeparators);
+        return lastSep >= 0 ? prefix[..lastSep] : string.Empty;
     }
 }

@@ -259,24 +259,37 @@ public sealed class MainWindowViewModel : ViewModelBase
         this.lastSubmittedSkinFolderPath = this.SkinFolderPath;
         this.RefreshGenerateAvailability();
 
-        var skinFolderValidation = this.inputValidationService.ValidateSkinFolder(this.SkinFolderPath, requireValue: false);
-        this.ApplySkinFolderValidation(skinFolderValidation, clearWhenEmpty: true);
-
-        if (!skinFolderValidation.IsValid)
+        switch (this.inputValidationService.ValidateSkinFolder(this.SkinFolderPath, requireValue: false))
         {
-            this.activeSkinFolderPath = string.Empty;
-            this.loadedSkinFolderPath = string.Empty;
-            this.ClearColourInputs();
-            this.RefreshGenerateAvailability();
-            return;
-        }
+            case SkinFolderValidation.Invalid invalid:
+                this.SetValidationError(SkinFolderValidationKey, invalid.Message);
+                this.activeSkinFolderPath = string.Empty;
+                this.loadedSkinFolderPath = string.Empty;
+                this.ClearColourInputs();
+                this.RefreshGenerateAvailability();
+                return;
 
-        var skinFolderPath = skinFolderValidation.SkinFolderPath!;
-        var skinIniPath = skinFolderValidation.SkinIniPath!;
-        this.activeSkinFolderPath = skinFolderPath;
+            case SkinFolderValidation.Empty:
+                this.ClearValidationError(SkinFolderValidationKey);
+                this.activeSkinFolderPath = string.Empty;
+                this.loadedSkinFolderPath = string.Empty;
+                this.ClearColourInputs();
+                this.RefreshGenerateAvailability();
+                return;
+
+            case SkinFolderValidation.Valid valid:
+                this.ClearValidationError(SkinFolderValidationKey);
+                this.LoadSkinFolder(valid, logPath);
+                return;
+        }
+    }
+
+    private void LoadSkinFolder(SkinFolderValidation.Valid valid, bool logPath)
+    {
+        this.activeSkinFolderPath = valid.SkinFolderPath;
         this.RefreshGenerateAvailability();
 
-        if (string.Equals(this.loadedSkinFolderPath, skinFolderPath, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(this.loadedSkinFolderPath, valid.SkinFolderPath, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -285,13 +298,13 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         if (logPath)
         {
-            this.Log($"Selected skin folder: {skinFolderPath}");
+            this.Log($"Selected skin folder: {valid.SkinFolderPath}");
         }
 
         try
         {
-            var config = this.skinIniReader.Read(skinIniPath);
-            this.loadedSkinFolderPath = skinFolderPath;
+            var config = this.skinIniReader.Read(valid.SkinIniPath);
+            this.loadedSkinFolderPath = valid.SkinFolderPath;
             this.ApplyComboColour(config);
             this.Log($"  HitCirclePrefix: {config.HitCirclePrefix}");
 
@@ -380,43 +393,38 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private void ApplyRgbColour()
     {
-        var validation = this.inputValidationService.ValidateRgbInput(
+        switch (this.inputValidationService.ValidateRgbInput(
             this.ColourRText,
             this.ColourGText,
             this.ColourBText,
-            requireValue: false);
-
-        if (validation.ErrorMessage != null)
+            requireValue: false))
         {
-            this.SetValidationError(ColourValidationKey, validation.ErrorMessage, writeToLog: false);
-            return;
+            case ColourValidation.Invalid invalid:
+                this.SetValidationError(ColourValidationKey, invalid.Message, writeToLog: false);
+                break;
+            case ColourValidation.Empty:
+                this.ClearColourInputs();
+                break;
+            case ColourValidation.Valid valid:
+                this.CommitAppliedColour(valid.Color);
+                break;
         }
-
-        if (validation.Colour == null)
-        {
-            this.ClearColourInputs();
-            return;
-        }
-
-        this.CommitAppliedColour(validation.Colour.Value);
     }
 
     private void ApplyHexColour()
     {
-        var validation = this.inputValidationService.ValidateHexInput(this.ColourHex, requireValue: false);
-        if (validation.ErrorMessage != null)
+        switch (this.inputValidationService.ValidateHexInput(this.ColourHex, requireValue: false))
         {
-            this.SetValidationError(ColourValidationKey, validation.ErrorMessage, writeToLog: false);
-            return;
+            case ColourValidation.Invalid invalid:
+                this.SetValidationError(ColourValidationKey, invalid.Message, writeToLog: false);
+                break;
+            case ColourValidation.Empty:
+                this.ClearColourInputs();
+                break;
+            case ColourValidation.Valid valid:
+                this.CommitAppliedColour(valid.Color);
+                break;
         }
-
-        if (validation.Colour == null)
-        {
-            this.ClearColourInputs();
-            return;
-        }
-
-        this.CommitAppliedColour(validation.Colour.Value);
     }
 
     private void CommitAppliedColour(RgbColor colour)
@@ -470,18 +478,26 @@ public sealed class MainWindowViewModel : ViewModelBase
         try
         {
             var progress = new Progress<GenerationProgress>(this.ReportProgress);
-            var result = await this.generationService.GenerateAsync(request, progress);
+            var outcome = await this.generationService.GenerateAsync(request, progress);
 
             this.ProgressValue = 100;
-            if (result.Success)
+            switch (outcome.Status)
             {
-                this.ClearValidationError(GenerationValidationKey);
-                this.Log(result.Message);
-                this.Log("All done!");
-            }
-            else
-            {
-                this.SetValidationError(GenerationValidationKey, result.Message);
+                case GenerationStatus.Succeeded:
+                    this.ClearValidationError(GenerationValidationKey);
+                    if (!string.IsNullOrEmpty(outcome.DetailMessage))
+                    {
+                        this.Log(outcome.DetailMessage);
+                    }
+
+                    this.Log("All done!");
+                    break;
+                case GenerationStatus.Cancelled:
+                    this.Log(outcome.DetailMessage ?? "Generation cancelled.");
+                    break;
+                case GenerationStatus.Failed:
+                    this.SetValidationError(GenerationValidationKey, outcome.DetailMessage ?? "Generation failed.");
+                    break;
             }
         }
         catch (Exception ex)
@@ -504,14 +520,22 @@ public sealed class MainWindowViewModel : ViewModelBase
             return false;
         }
 
-        var skinFolderValidation = this.inputValidationService.ValidateSkinFolder(this.SkinFolderPath, requireValue: true);
-        this.ApplySkinFolderValidation(skinFolderValidation, clearWhenEmpty: false);
-        if (!skinFolderValidation.IsValid)
+        string skinFolderPath;
+        switch (this.inputValidationService.ValidateSkinFolder(this.SkinFolderPath, requireValue: true))
         {
-            return false;
+            case SkinFolderValidation.Invalid invalid:
+                this.SetValidationError(SkinFolderValidationKey, invalid.Message);
+                return false;
+            case SkinFolderValidation.Empty:
+                return false;
+            case SkinFolderValidation.Valid valid:
+                this.ClearValidationError(SkinFolderValidationKey);
+                skinFolderPath = valid.SkinFolderPath;
+                break;
+            default:
+                return false;
         }
 
-        var skinFolderPath = skinFolderValidation.SkinFolderPath!;
         if (!string.Equals(this.activeSkinFolderPath, skinFolderPath, StringComparison.OrdinalIgnoreCase))
         {
             this.activeSkinFolderPath = skinFolderPath;
@@ -540,7 +564,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private void ReportProgress(GenerationProgress progress)
     {
-        this.ProgressValue = progress.Progress * 100;
+        this.ProgressValue = progress.Fraction * 100;
         this.Log(progress.Message);
     }
 
@@ -568,18 +592,6 @@ public sealed class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             this.SetValidationError(ClipboardValidationKey, $"Failed to copy logs: {ex.Message}", writeToLog: false);
-        }
-    }
-
-    private void ApplySkinFolderValidation(SkinFolderValidationResult validation, bool clearWhenEmpty)
-    {
-        if (validation.ErrorMessage != null)
-        {
-            this.SetValidationError(SkinFolderValidationKey, validation.ErrorMessage);
-        }
-        else if (validation.HasValue || clearWhenEmpty)
-        {
-            this.ClearValidationError(SkinFolderValidationKey);
         }
     }
 

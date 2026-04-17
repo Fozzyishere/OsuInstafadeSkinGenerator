@@ -1,3 +1,4 @@
+using OsuInstaFadeSkinGenerator.Models;
 using OsuInstaFadeSkinGenerator.Services;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
@@ -16,7 +17,7 @@ public sealed class SkinIniReaderTests
         SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, templateNumber);
 
         var reader = new SkinIniReader();
-        var config = reader.Read(Path.Combine(skinDir.RootPath, "skin.ini"));
+        var config = reader.Read(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni));
 
         SkinIniTemplateFixture.AssertSupportedFieldsMatch(templateContent, config);
     }
@@ -38,7 +39,7 @@ public sealed class SkinIniReaderTests
         SkinTestHelper.WriteSkinIni(skinDir.RootPath, content);
 
         var reader = new SkinIniReader();
-        var config = reader.Read(Path.Combine(skinDir.RootPath, "skin.ini"));
+        var config = reader.Read(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni));
 
         Assert.Equal(expected.Name, config.Name);
         Assert.Equal(expected.Author, config.Author);

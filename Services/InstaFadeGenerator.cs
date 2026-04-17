@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using OsuInstaFadeSkinGenerator.Models;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
@@ -7,17 +13,15 @@ namespace OsuInstaFadeSkinGenerator.Services;
 
 public sealed class InstaFadeGenerator : IGenerationService
 {
-    private const string SkinIniFileName = "skin.ini";
-    private const string BackupFolderName = "_insta-fade-backup";
     private static readonly string[] OriginalAssetNames =
     [
-        "hitcircle.png",
-        "hitcircle@2x.png",
-        "hitcircleoverlay.png",
-        "hitcircleoverlay@2x.png",
+        SkinAssetNames.Hitcircle,
+        SkinAssetNames.WithHd(SkinAssetNames.Hitcircle),
+        SkinAssetNames.HitcircleOverlay,
+        SkinAssetNames.WithHd(SkinAssetNames.HitcircleOverlay),
     ];
 
-    private static readonly string[] VariantSuffixes = [string.Empty, "@2x"];
+    private static readonly string[] VariantSuffixes = [string.Empty, SkinAssetNames.HdSuffix];
     private readonly ISkinIniReader skinIniReader;
     private readonly ISkinIniWriter skinIniWriter;
 
@@ -27,7 +31,7 @@ public sealed class InstaFadeGenerator : IGenerationService
         this.skinIniWriter = skinIniWriter;
     }
 
-    public Task<GenerationResult> GenerateAsync(
+    public Task<GenerationOutcome> GenerateAsync(
         GenerationRequest request,
         IProgress<GenerationProgress>? progress = null,
         CancellationToken cancellationToken = default)
@@ -35,7 +39,7 @@ public sealed class InstaFadeGenerator : IGenerationService
         return Task.Run(() => this.Generate(request, progress, cancellationToken));
     }
 
-    private GenerationResult Generate(
+    private GenerationOutcome Generate(
         GenerationRequest request,
         IProgress<GenerationProgress>? progress,
         CancellationToken cancellationToken)
@@ -45,36 +49,36 @@ public sealed class InstaFadeGenerator : IGenerationService
             cancellationToken.ThrowIfCancellationRequested();
 
             var skinFolder = request.SkinFolderPath;
-            var skinIniPath = Path.Combine(skinFolder, SkinIniFileName);
+            var skinIniPath = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
 
             if (!Directory.Exists(skinFolder))
             {
-                return new GenerationResult(false, "Skin folder does not exist.");
+                return new GenerationOutcome(GenerationStatus.Failed, GenerationError.SkinFolderMissing, "Skin folder does not exist.");
             }
 
             if (!File.Exists(skinIniPath))
             {
-                return new GenerationResult(false, "skin.ini not found in skin folder.");
+                return new GenerationOutcome(GenerationStatus.Failed, GenerationError.SkinIniMissing, "skin.ini not found in skin folder.");
             }
 
-            this.ReportProgress(progress, 0.0, "Reading skin.ini...");
+            this.ReportProgress(progress, GenerationPhase.ReadingIni, 0.0, "Reading skin.ini...");
             var config = this.ParseSkinIniOrThrow(skinIniPath);
             var prefix = config.HitCirclePrefix;
 
-            this.ReportProgress(progress, 0.02, $"  Skin: {config.Name} (v{config.Version}) by {config.Author}");
-            this.ReportProgress(progress, 0.03, $"  HitCirclePrefix: {prefix}");
-            this.ReportProgress(progress, 0.04, $"  OverlayAboveNumber: {config.HitCircleOverlayAboveNumber}");
+            this.ReportProgress(progress, GenerationPhase.ReadingIni, 0.02, $"  Skin: {config.Name} (v{config.Version}) by {config.Author}");
+            this.ReportProgress(progress, GenerationPhase.ReadingIni, 0.03, $"  HitCirclePrefix: {prefix}");
+            this.ReportProgress(progress, GenerationPhase.ReadingIni, 0.04, $"  OverlayAboveNumber: {config.HitCircleOverlayAboveNumber}");
 
             if (request.BackupFiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                this.ReportProgress(progress, 0.05, "Creating backup...");
+                this.ReportProgress(progress, GenerationPhase.CreatingBackup, 0.05, "Creating backup...");
                 this.CreateBackup(skinFolder, prefix);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            this.ReportProgress(progress, 0.1, "Processing SD images...");
-            var sdResult = this.ProcessVariant(
+            this.ReportProgress(progress, GenerationPhase.ProcessingSd, 0.1, "Processing SD images...");
+            var sdOutcome = this.ProcessVariant(
                 skinFolder,
                 prefix,
                 string.Empty,
@@ -82,41 +86,53 @@ public sealed class InstaFadeGenerator : IGenerationService
                 request,
                 progress,
                 cancellationToken,
-                new ProgressRange(0.1, 0.5));
-            if (!sdResult.Success)
+                new ProgressRange(0.1, 0.5),
+                GenerationPhase.ProcessingSd);
+            if (sdOutcome.Status != GenerationStatus.Succeeded)
             {
-                return sdResult;
+                return sdOutcome;
             }
 
             bool hdProcessed = false;
             if (request.ProcessHd)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                this.ReportProgress(progress, 0.5, "Processing HD (@2x) images...");
+                this.ReportProgress(progress, GenerationPhase.ProcessingHd, 0.5, "Processing HD (@2x) images...");
                 var missingHdAssets = this.GetMissingRequiredHdAssets(skinFolder);
                 if (missingHdAssets.Count > 0)
                 {
                     foreach (var missingAsset in missingHdAssets)
                     {
-                        this.ReportProgress(progress, 0.5, $"Warning: Missing required HD asset: {missingAsset}");
+                        this.ReportProgress(
+                            progress,
+                            GenerationPhase.ProcessingHd,
+                            0.5,
+                            $"Warning: Missing required HD asset: {missingAsset}",
+                            GenerationError.MissingHdAsset);
                     }
 
-                    this.ReportProgress(progress, 0.5, "Warning: Skipping HD generation and continuing with SD only.");
+                    this.ReportProgress(
+                        progress,
+                        GenerationPhase.ProcessingHd,
+                        0.5,
+                        "Warning: Skipping HD generation and continuing with SD only.",
+                        GenerationError.MissingHdAsset);
                 }
                 else
                 {
-                    var hdResult = this.ProcessVariant(
+                    var hdOutcome = this.ProcessVariant(
                         skinFolder,
                         prefix,
-                        "@2x",
+                        SkinAssetNames.HdSuffix,
                         config,
                         request,
                         progress,
                         cancellationToken,
-                        new ProgressRange(0.5, 0.9));
-                    if (!hdResult.Success)
+                        new ProgressRange(0.5, 0.9),
+                        GenerationPhase.ProcessingHd);
+                    if (hdOutcome.Status != GenerationStatus.Succeeded)
                     {
-                        return hdResult;
+                        return hdOutcome;
                     }
 
                     hdProcessed = true;
@@ -124,11 +140,11 @@ public sealed class InstaFadeGenerator : IGenerationService
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            this.ReportProgress(progress, 0.9, "Updating skin.ini...");
+            this.ReportProgress(progress, GenerationPhase.UpdatingIni, 0.9, "Updating skin.ini...");
             var overlapWidth = this.GetDefaultWidth(skinFolder, prefix, string.Empty);
             if (overlapWidth <= 0 && hdProcessed)
             {
-                overlapWidth = this.GetDefaultWidth(skinFolder, prefix, "@2x") / 2;
+                overlapWidth = this.GetDefaultWidth(skinFolder, prefix, SkinAssetNames.HdSuffix) / 2;
             }
 
             this.UpdateSkinIniOrThrow(
@@ -138,24 +154,24 @@ public sealed class InstaFadeGenerator : IGenerationService
                 request.ComboColor.B,
                 overlapWidth > 0 ? overlapWidth : 0);
 
-            this.ReportProgress(progress, 1.0, "Done!");
-            return new GenerationResult(true, "Insta-fade hitcircles generated successfully.");
+            this.ReportProgress(progress, GenerationPhase.Done, 1.0, "Done!");
+            return new GenerationOutcome(GenerationStatus.Succeeded, null, "Insta-fade hitcircles generated successfully.");
         }
         catch (OperationCanceledException)
         {
-            return new GenerationResult(false, "Generation cancelled.");
+            return new GenerationOutcome(GenerationStatus.Cancelled, null, "Generation cancelled.");
         }
         catch (GenerationFailureException ex)
         {
-            return new GenerationResult(false, ex.Message);
+            return new GenerationOutcome(GenerationStatus.Failed, ex.Error, ex.Message);
         }
         catch (Exception ex)
         {
-            return new GenerationResult(false, $"Generation failed unexpectedly: {ex.Message}");
+            return new GenerationOutcome(GenerationStatus.Failed, GenerationError.Unexpected, $"Generation failed unexpectedly: {ex.Message}");
         }
     }
 
-    private GenerationResult ProcessVariant(
+    private GenerationOutcome ProcessVariant(
         string skinFolder,
         string prefix,
         string suffix,
@@ -163,20 +179,21 @@ public sealed class InstaFadeGenerator : IGenerationService
         GenerationRequest request,
         IProgress<GenerationProgress>? progress,
         CancellationToken cancellationToken,
-        ProgressRange progressRange)
+        ProgressRange progressRange,
+        GenerationPhase phase)
     {
         var hitcirclePath = Path.Combine(skinFolder, $"hitcircle{suffix}.png");
         var overlayPath = Path.Combine(skinFolder, $"hitcircleoverlay{suffix}.png");
 
         if (!File.Exists(hitcirclePath))
         {
-            if (suffix == "@2x")
+            if (suffix == SkinAssetNames.HdSuffix)
             {
-                this.ReportProgress(progress, progressRange.Start, "No HD (@2x) found, skipping...");
-                return new GenerationResult(true, "No HD (@2x) found, skipping...");
+                this.ReportProgress(progress, phase, progressRange.Start, "No HD (@2x) found, skipping...");
+                return new GenerationOutcome(GenerationStatus.Succeeded, null, "No HD (@2x) found, skipping...");
             }
 
-            return new GenerationResult(false, $"hitcircle{suffix}.png not found.");
+            return new GenerationOutcome(GenerationStatus.Failed, GenerationError.IoFailure, $"hitcircle{suffix}.png not found.");
         }
 
         using var hitcircle = this.LoadImageOrThrow(hitcirclePath);
@@ -185,17 +202,17 @@ public sealed class InstaFadeGenerator : IGenerationService
             : ImageProcessor.CreateBlank(hitcircle.Width, hitcircle.Height);
 
         var progressSpan = progressRange.End - progressRange.Start;
-        this.ReportProgress(progress, progressRange.Start + (progressSpan * 0.1), $"Upscaling {suffix}...");
+        this.ReportProgress(progress, phase, progressRange.Start + (progressSpan * 0.1), $"Upscaling {suffix}...");
 
         using var upscaledHitcircle = ImageProcessor.Upscale(hitcircle, 1.25f);
         using var upscaledOverlay = ImageProcessor.Upscale(overlay, 1.25f);
 
         cancellationToken.ThrowIfCancellationRequested();
-        this.ReportProgress(progress, progressRange.Start + (progressSpan * 0.2), $"Tinting {suffix}...");
+        this.ReportProgress(progress, phase, progressRange.Start + (progressSpan * 0.2), $"Tinting {suffix}...");
         ImageProcessor.Tint(upscaledHitcircle, request.ComboColor.R, request.ComboColor.G, request.ComboColor.B);
 
         cancellationToken.ThrowIfCancellationRequested();
-        this.ReportProgress(progress, progressRange.Start + (progressSpan * 0.3), $"Compositing {suffix}...");
+        this.ReportProgress(progress, phase, progressRange.Start + (progressSpan * 0.3), $"Compositing {suffix}...");
         using var merged = ImageProcessor.Composite(upscaledHitcircle, upscaledOverlay);
 
         for (int i = 1; i <= 9; i++)
@@ -205,6 +222,7 @@ public sealed class InstaFadeGenerator : IGenerationService
             var numberPath = this.ResolvePrefixPath(skinFolder, prefix, i.ToString(), suffix);
             this.ReportProgress(
                 progress,
+                phase,
                 progressRange.Start + (progressSpan * (0.3 + (0.05 * i))),
                 $"Processing {Path.GetFileName(numberPath)}...");
 
@@ -229,6 +247,7 @@ public sealed class InstaFadeGenerator : IGenerationService
         var blankPath = this.ResolvePrefixPath(skinFolder, prefix, "0", suffix);
         this.ReportProgress(
             progress,
+            phase,
             progressRange.Start + (progressSpan * 0.85),
             $"Creating blank {Path.GetFileName(blankPath)}...");
         this.EnsureParentDirectory(blankPath);
@@ -236,7 +255,7 @@ public sealed class InstaFadeGenerator : IGenerationService
         this.SaveImageAsPngOrThrow(blank, blankPath);
 
         cancellationToken.ThrowIfCancellationRequested();
-        this.ReportProgress(progress, progressRange.Start + (progressSpan * 0.95), $"Replacing originals {suffix}...");
+        this.ReportProgress(progress, phase, progressRange.Start + (progressSpan * 0.95), $"Replacing originals {suffix}...");
 
         if (request.EnableTripleStacking)
         {
@@ -253,7 +272,7 @@ public sealed class InstaFadeGenerator : IGenerationService
             this.SaveImageAsPngOrThrow(transparentOverlay, overlayPath);
         }
 
-        return new GenerationResult(true, $"Variant {suffix} processed successfully.");
+        return new GenerationOutcome(GenerationStatus.Succeeded, null, $"Variant {suffix} processed successfully.");
     }
 
     private string ResolvePrefixPath(string skinFolder, string prefix, string numberSuffix, string hdSuffix)
@@ -279,7 +298,7 @@ public sealed class InstaFadeGenerator : IGenerationService
     {
         var requiredPaths = new List<string>
         {
-            Path.Combine(skinFolder, "hitcircle@2x.png"),
+            Path.Combine(skinFolder, SkinAssetNames.WithHd(SkinAssetNames.Hitcircle)),
         };
 
         return requiredPaths
@@ -290,7 +309,7 @@ public sealed class InstaFadeGenerator : IGenerationService
 
     private void CreateBackup(string skinFolder, string prefix)
     {
-        var backupDir = Path.Combine(skinFolder, BackupFolderName);
+        var backupDir = Path.Combine(skinFolder, SkinAssetNames.BackupFolder);
         this.CreateDirectoryOrThrow(backupDir, $"create backup folder {this.GetDisplayPath(backupDir)}");
 
         foreach (var name in OriginalAssetNames)
@@ -317,10 +336,10 @@ public sealed class InstaFadeGenerator : IGenerationService
             }
         }
 
-        var iniSrc = Path.Combine(skinFolder, SkinIniFileName);
+        var iniSrc = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
         if (File.Exists(iniSrc))
         {
-            this.CopyFileOrThrow(iniSrc, Path.Combine(backupDir, SkinIniFileName));
+            this.CopyFileOrThrow(iniSrc, Path.Combine(backupDir, SkinAssetNames.SkinIni));
         }
     }
 
@@ -341,19 +360,19 @@ public sealed class InstaFadeGenerator : IGenerationService
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new GenerationFailureException("Failed to read skin.ini. Access was denied.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, "Failed to read skin.ini. Access was denied.", ex);
         }
         catch (PathTooLongException ex)
         {
-            throw new GenerationFailureException("Failed to read skin.ini. The path is too long.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, "Failed to read skin.ini. The path is too long.", ex);
         }
         catch (IOException ex)
         {
-            throw new GenerationFailureException("Failed to read skin.ini. The file is in use or unreadable.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, "Failed to read skin.ini. The file is in use or unreadable.", ex);
         }
         catch (ArgumentException ex)
         {
-            throw new GenerationFailureException("Failed to read skin.ini. The file path is invalid.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, "Failed to read skin.ini. The file path is invalid.", ex);
         }
     }
 
@@ -365,25 +384,30 @@ public sealed class InstaFadeGenerator : IGenerationService
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new GenerationFailureException("Failed to update skin.ini. Access was denied.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, "Failed to update skin.ini. Access was denied.", ex);
         }
         catch (PathTooLongException ex)
         {
-            throw new GenerationFailureException("Failed to update skin.ini. The path is too long.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, "Failed to update skin.ini. The path is too long.", ex);
         }
         catch (IOException ex)
         {
-            throw new GenerationFailureException("Failed to update skin.ini. The file is in use or could not be written.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, "Failed to update skin.ini. The file is in use or could not be written.", ex);
         }
         catch (ArgumentException ex)
         {
-            throw new GenerationFailureException("Failed to update skin.ini. The file path is invalid.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, "Failed to update skin.ini. The file path is invalid.", ex);
         }
     }
 
-    private void ReportProgress(IProgress<GenerationProgress>? progress, double value, string message)
+    private void ReportProgress(
+        IProgress<GenerationProgress>? progress,
+        GenerationPhase phase,
+        double value,
+        string message,
+        GenerationError? warning = null)
     {
-        progress?.Report(new GenerationProgress(value, message));
+        progress?.Report(new GenerationProgress(phase, value, message, warning));
     }
 
     private Image<Rgba32> LoadImageOrThrow(string path)
@@ -394,31 +418,31 @@ public sealed class InstaFadeGenerator : IGenerationService
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new GenerationFailureException($"Failed to load {this.GetDisplayPath(path)}. Access was denied.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to load {this.GetDisplayPath(path)}. Access was denied.", ex);
         }
         catch (PathTooLongException ex)
         {
-            throw new GenerationFailureException($"Failed to load {this.GetDisplayPath(path)}. The path is too long.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to load {this.GetDisplayPath(path)}. The path is too long.", ex);
         }
         catch (IOException ex)
         {
-            throw new GenerationFailureException($"Failed to load {this.GetDisplayPath(path)}. The file is in use or unreadable.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to load {this.GetDisplayPath(path)}. The file is in use or unreadable.", ex);
         }
         catch (ArgumentException ex)
         {
-            throw new GenerationFailureException($"Failed to load {this.GetDisplayPath(path)}. The file path is invalid.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to load {this.GetDisplayPath(path)}. The file path is invalid.", ex);
         }
         catch (UnknownImageFormatException ex)
         {
-            throw new GenerationFailureException($"Failed to load {this.GetDisplayPath(path)}. The image format is not supported.", ex);
+            throw new GenerationFailureException(GenerationError.ImageDecodeFailure, $"Failed to load {this.GetDisplayPath(path)}. The image format is not supported.", ex);
         }
         catch (InvalidImageContentException ex)
         {
-            throw new GenerationFailureException($"Failed to load {this.GetDisplayPath(path)}. The image data is invalid or corrupted.", ex);
+            throw new GenerationFailureException(GenerationError.ImageDecodeFailure, $"Failed to load {this.GetDisplayPath(path)}. The image data is invalid or corrupted.", ex);
         }
         catch (NotSupportedException ex)
         {
-            throw new GenerationFailureException($"Failed to load {this.GetDisplayPath(path)}. The image format is not supported.", ex);
+            throw new GenerationFailureException(GenerationError.ImageDecodeFailure, $"Failed to load {this.GetDisplayPath(path)}. The image format is not supported.", ex);
         }
     }
 
@@ -430,19 +454,19 @@ public sealed class InstaFadeGenerator : IGenerationService
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new GenerationFailureException($"Failed to write {this.GetDisplayPath(path)}. Access was denied.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to write {this.GetDisplayPath(path)}. Access was denied.", ex);
         }
         catch (PathTooLongException ex)
         {
-            throw new GenerationFailureException($"Failed to write {this.GetDisplayPath(path)}. The path is too long.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to write {this.GetDisplayPath(path)}. The path is too long.", ex);
         }
         catch (IOException ex)
         {
-            throw new GenerationFailureException($"Failed to write {this.GetDisplayPath(path)}. The file is in use or could not be written.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to write {this.GetDisplayPath(path)}. The file is in use or could not be written.", ex);
         }
         catch (ArgumentException ex)
         {
-            throw new GenerationFailureException($"Failed to write {this.GetDisplayPath(path)}. The file path is invalid.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to write {this.GetDisplayPath(path)}. The file path is invalid.", ex);
         }
     }
 
@@ -454,19 +478,19 @@ public sealed class InstaFadeGenerator : IGenerationService
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new GenerationFailureException($"Failed to back up {this.GetDisplayPath(sourcePath)}. Access was denied.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to back up {this.GetDisplayPath(sourcePath)}. Access was denied.", ex);
         }
         catch (PathTooLongException ex)
         {
-            throw new GenerationFailureException($"Failed to back up {this.GetDisplayPath(sourcePath)}. The path is too long.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to back up {this.GetDisplayPath(sourcePath)}. The path is too long.", ex);
         }
         catch (IOException ex)
         {
-            throw new GenerationFailureException($"Failed to back up {this.GetDisplayPath(sourcePath)}. The file is in use or could not be copied.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to back up {this.GetDisplayPath(sourcePath)}. The file is in use or could not be copied.", ex);
         }
         catch (ArgumentException ex)
         {
-            throw new GenerationFailureException($"Failed to back up {this.GetDisplayPath(sourcePath)}. The file path is invalid.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to back up {this.GetDisplayPath(sourcePath)}. The file path is invalid.", ex);
         }
     }
 
@@ -478,23 +502,23 @@ public sealed class InstaFadeGenerator : IGenerationService
         }
         catch (UnauthorizedAccessException ex)
         {
-            throw new GenerationFailureException($"Failed to {operation}. Access was denied.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to {operation}. Access was denied.", ex);
         }
         catch (PathTooLongException ex)
         {
-            throw new GenerationFailureException($"Failed to {operation}. The path is too long.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to {operation}. The path is too long.", ex);
         }
         catch (IOException ex)
         {
-            throw new GenerationFailureException($"Failed to {operation}. The folder could not be created.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to {operation}. The folder could not be created.", ex);
         }
         catch (ArgumentException ex)
         {
-            throw new GenerationFailureException($"Failed to {operation}. The folder path is invalid.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to {operation}. The folder path is invalid.", ex);
         }
         catch (NotSupportedException ex)
         {
-            throw new GenerationFailureException($"Failed to {operation}. The folder path is not supported.", ex);
+            throw new GenerationFailureException(GenerationError.IoFailure, $"Failed to {operation}. The folder path is not supported.", ex);
         }
     }
 
