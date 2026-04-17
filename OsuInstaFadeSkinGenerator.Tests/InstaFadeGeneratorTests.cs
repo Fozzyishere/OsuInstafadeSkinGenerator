@@ -1,5 +1,8 @@
+using OsuInstaFadeSkinGenerator.Application.Generation;
+using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
+using OsuInstaFadeSkinGenerator.Infrastructure.Io;
+using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 using OsuInstaFadeSkinGenerator.Models;
-using OsuInstaFadeSkinGenerator.Services;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
@@ -16,7 +19,7 @@ public sealed class InstaFadeGeneratorTests
         CreateBaseAssets(skinDir.RootPath);
         SkinTestHelper.CreateNumberAssets(skinDir.RootPath, prefix);
 
-        var generator = CreateGenerator();
+        var generator = CreateOrchestrator();
         var result = await generator.GenerateAsync(
             CreateRequest(skinDir.RootPath, processHd: false, backupFiles: false, enableTripleStacking: false));
 
@@ -66,7 +69,7 @@ public sealed class InstaFadeGeneratorTests
         SkinTestHelper.WriteFilledPng(SkinTestHelper.ResolvePrefixPath(skinDir.RootPath, prefix, "1"), 2, 2, new Rgba32(255, 255, 255, 255));
         SkinTestHelper.WriteFilledPng(SkinTestHelper.ResolvePrefixPath(skinDir.RootPath, prefix, "5", SkinAssetNames.HdSuffix), 4, 4, new Rgba32(255, 255, 255, 255));
 
-        var generator = CreateGenerator();
+        var generator = CreateOrchestrator();
 
         var result = await generator.GenerateAsync(
             CreateRequest(skinDir.RootPath, processHd: false, backupFiles: true, enableTripleStacking: false));
@@ -96,15 +99,14 @@ public sealed class InstaFadeGeneratorTests
         CreateBaseAssets(skinDir.RootPath);
         SkinTestHelper.CreateNumberAssets(skinDir.RootPath, prefix);
         var progress = new RecordingProgress();
-        var generator = CreateGenerator();
+        var generator = CreateOrchestrator();
 
         var result = await generator.GenerateAsync(
             CreateRequest(skinDir.RootPath, processHd: true, backupFiles: false, enableTripleStacking: false),
             progress);
 
         Assert.Equal(GenerationStatus.Succeeded, result.Status);
-        Assert.Contains(progress.Entries, entry => entry.Message.Contains("Missing required HD asset", StringComparison.Ordinal));
-        Assert.Contains(progress.Entries, entry => entry.Message.Contains("Skipping HD generation", StringComparison.Ordinal));
+        Assert.Contains(progress.Entries, entry => entry.Phase == GenerationPhase.ProcessingHd && entry.Warning == GenerationError.MissingHdAsset);
         Assert.False(File.Exists(SkinTestHelper.ResolvePrefixPath(skinDir.RootPath, prefix, "1", SkinAssetNames.HdSuffix)));
 
         var updatedSkinIni = File.ReadAllText(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni));
@@ -120,7 +122,7 @@ public sealed class InstaFadeGeneratorTests
         SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, 3);
         CreateBaseAssets(skinDir.RootPath);
         SkinTestHelper.CreateNumberAssets(skinDir.RootPath, prefix);
-        var generator = CreateGenerator();
+        var generator = CreateOrchestrator();
 
         var result = await generator.GenerateAsync(
             CreateRequest(skinDir.RootPath, processHd: false, backupFiles: false, enableTripleStacking: true));
@@ -143,9 +145,14 @@ public sealed class InstaFadeGeneratorTests
         SkinIniTemplateFixture.AssertUpdatedSkinIni(templateContent, updatedSkinIni, "10,20,30", 5);
     }
 
-    private static InstaFadeGenerator CreateGenerator()
+    private static IGenerationService CreateOrchestrator()
     {
-        return new InstaFadeGenerator(new SkinIniReader(), new SkinIniWriter());
+        var fileSystem = new PhysicalFileSystem();
+        return new InstaFadeGenerationOrchestrator(
+            new SkinIniReader(fileSystem),
+            new SkinIniWriter(fileSystem),
+            fileSystem,
+            new ImageSharpImageIo());
     }
 
     private static GenerationRequest CreateRequest(

@@ -1,5 +1,6 @@
+using OsuInstaFadeSkinGenerator.Infrastructure.Io;
+using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 using OsuInstaFadeSkinGenerator.Models;
-using OsuInstaFadeSkinGenerator.Services;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
@@ -10,20 +11,20 @@ public sealed class SkinIniReaderTests
     [InlineData(2)]
     [InlineData(3)]
     [InlineData(4)]
-    public void Read_Template_ParsesSupportedFields(int templateNumber)
+    public async Task Read_Template_ParsesSupportedFields(int templateNumber)
     {
         using var skinDir = new TestSkinDirectory();
         var templateContent = SkinIniTemplateFixture.GetTemplateContent(templateNumber);
         SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, templateNumber);
 
-        var reader = new SkinIniReader();
-        var config = reader.Read(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni));
+        var reader = new SkinIniReader(new PhysicalFileSystem());
+        var config = await reader.ReadAsync(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni), CancellationToken.None);
 
         SkinIniTemplateFixture.AssertSupportedFieldsMatch(templateContent, config);
     }
 
     [Fact]
-    public void Read_TemplateDerivedMixedCasingAndInvalidValues_LeavesDefaults()
+    public async Task Read_TemplateDerivedMixedCasingAndInvalidValues_LeavesDefaults()
     {
         using var skinDir = new TestSkinDirectory();
         var templateContent = SkinIniTemplateFixture.GetTemplateContent(4);
@@ -38,8 +39,8 @@ public sealed class SkinIniReaderTests
             .Replace("HitCircleOverlap: 25", "HitCircleOverlap: invalid", StringComparison.Ordinal);
         SkinTestHelper.WriteSkinIni(skinDir.RootPath, content);
 
-        var reader = new SkinIniReader();
-        var config = reader.Read(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni));
+        var reader = new SkinIniReader(new PhysicalFileSystem());
+        var config = await reader.ReadAsync(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni), CancellationToken.None);
 
         Assert.Equal(expected.Name, config.Name);
         Assert.Equal(expected.Author, config.Author);

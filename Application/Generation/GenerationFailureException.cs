@@ -1,7 +1,7 @@
 using System;
 using OsuInstaFadeSkinGenerator.Models;
 
-namespace OsuInstaFadeSkinGenerator.Services;
+namespace OsuInstaFadeSkinGenerator.Application.Generation;
 
 public sealed class GenerationFailureException : Exception
 {

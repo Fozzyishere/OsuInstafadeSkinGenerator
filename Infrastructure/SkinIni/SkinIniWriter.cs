@@ -1,12 +1,27 @@
-namespace OsuInstaFadeSkinGenerator.Services;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using OsuInstaFadeSkinGenerator.Application.Ports;
+using OsuInstaFadeSkinGenerator.Models;
+
+namespace OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 
 public sealed class SkinIniWriter : ISkinIniWriter
 {
-    public void Update(string skinIniPath, byte comboR, byte comboG, byte comboB, int hitCircleOverlap)
+    private readonly IFileSystem fileSystem;
+
+    public SkinIniWriter(IFileSystem fileSystem)
     {
-        var lines = File.ReadAllLines(skinIniPath).ToList();
+        this.fileSystem = fileSystem;
+    }
+
+    public async Task UpdateAsync(string skinIniPath, RgbColor comboColor, int hitCircleOverlap, CancellationToken cancellationToken)
+    {
+        var lines = (await this.fileSystem.ReadAllLinesAsync(skinIniPath, cancellationToken).ConfigureAwait(false)).ToList();
         var result = new List<string>();
-        var comboValue = $"{comboR},{comboG},{comboB}";
+        var comboValue = $"{comboColor.R},{comboColor.G},{comboColor.B}";
         var indent = SkinIniCommon.DetectIndent(lines);
         string currentSection = string.Empty;
         bool combo1Written = false;
@@ -70,7 +85,7 @@ public sealed class SkinIniWriter : ISkinIniWriter
             AppendNewSection(result, "[Fonts]", $"HitCircleOverlap: {hitCircleOverlap}", indent);
         }
 
-        File.WriteAllLines(skinIniPath, result);
+        await this.fileSystem.WriteAllLinesAsync(skinIniPath, result, cancellationToken).ConfigureAwait(false);
     }
 
     private static void FlushSection(

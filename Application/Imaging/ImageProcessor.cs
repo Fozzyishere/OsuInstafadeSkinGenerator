@@ -1,8 +1,9 @@
+using System;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
-namespace OsuInstaFadeSkinGenerator.Services;
+namespace OsuInstaFadeSkinGenerator.Application.Imaging;
 
 public static class ImageProcessor
 {

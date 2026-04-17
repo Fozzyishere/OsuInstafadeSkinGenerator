@@ -1,5 +1,5 @@
+using System;
 using System.Globalization;
-using OsuInstaFadeSkinGenerator.Services;
 
 namespace OsuInstaFadeSkinGenerator.Models;
 
@@ -56,7 +56,8 @@ public readonly record struct RgbColor(byte R, byte G, byte B)
             return false;
         }
 
-        var sanitized = SkinIniCommon.TrimInlineComment(csv);
+        var commentIndex = csv.IndexOf("//", StringComparison.Ordinal);
+        var sanitized = (commentIndex >= 0 ? csv[..commentIndex] : csv).TrimEnd();
         var parts = sanitized.Split(',');
         if (parts.Length < 3)
         {

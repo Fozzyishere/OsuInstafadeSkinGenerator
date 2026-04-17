@@ -1,8 +1,9 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using OsuInstaFadeSkinGenerator.Models;
 
-namespace OsuInstaFadeSkinGenerator.Services;
+namespace OsuInstaFadeSkinGenerator.Application.Generation;
 
 public interface IGenerationService
 {

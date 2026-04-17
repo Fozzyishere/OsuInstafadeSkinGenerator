@@ -1,4 +1,9 @@
 using Avalonia.Media;
+using OsuInstaFadeSkinGenerator.Application.Generation;
+using OsuInstaFadeSkinGenerator.Application.Ports;
+using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
+using OsuInstaFadeSkinGenerator.Infrastructure.Io;
+using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 using OsuInstaFadeSkinGenerator.Models;
 using OsuInstaFadeSkinGenerator.Services;
 
@@ -51,7 +56,7 @@ public sealed class MainWindowViewModel : ViewModelBase
         this.userInteractionService = userInteractionService;
 
         this.BrowseCommand = new AsyncCommand(this.BrowseAsync, () => this.IsInputEnabled);
-        this.ConfirmSkinFolderPathCommand = new RelayCommand(() => this.ConfirmSkinFolderPathInput(), () => this.IsInputEnabled);
+        this.ConfirmSkinFolderPathCommand = new AsyncCommand(() => this.ConfirmSkinFolderPathAsync(), () => this.IsInputEnabled);
         this.ApplyRgbCommand = new RelayCommand(this.ApplyRgbColour, () => this.IsInputEnabled);
         this.ApplyHexCommand = new RelayCommand(this.ApplyHexColour, () => this.IsInputEnabled);
         this.GenerateCommand = new AsyncCommand(this.GenerateAsync, () => this.CanGenerate);
@@ -212,7 +217,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     public AsyncCommand BrowseCommand { get; }
 
-    public RelayCommand ConfirmSkinFolderPathCommand { get; }
+    public AsyncCommand ConfirmSkinFolderPathCommand { get; }
 
     public RelayCommand ApplyRgbCommand { get; }
 
@@ -244,17 +249,19 @@ public sealed class MainWindowViewModel : ViewModelBase
     public static MainWindowViewModel CreateDesignTime(IUserInteractionService userInteractionService)
     {
         var inputValidationService = new InputValidationService();
-        var skinIniReader = new SkinIniReader();
-        var skinIniWriter = new SkinIniWriter();
+        var fileSystem = new PhysicalFileSystem();
+        var skinIniReader = new SkinIniReader(fileSystem);
+        var skinIniWriter = new SkinIniWriter(fileSystem);
+        var imageIo = new ImageSharpImageIo();
 
         return new MainWindowViewModel(
             inputValidationService,
             skinIniReader,
-            new InstaFadeGenerator(skinIniReader, skinIniWriter),
+            new InstaFadeGenerationOrchestrator(skinIniReader, skinIniWriter, fileSystem, imageIo),
             userInteractionService);
     }
 
-    private void ConfirmSkinFolderPathInput(bool logPath = false)
+    private async Task ConfirmSkinFolderPathAsync(bool logPath = false)
     {
         this.lastSubmittedSkinFolderPath = this.SkinFolderPath;
         this.RefreshGenerateAvailability();
@@ -279,12 +286,12 @@ public sealed class MainWindowViewModel : ViewModelBase
 
             case SkinFolderValidation.Valid valid:
                 this.ClearValidationError(SkinFolderValidationKey);
-                this.LoadSkinFolder(valid, logPath);
+                await this.LoadSkinFolderAsync(valid, logPath).ConfigureAwait(true);
                 return;
         }
     }
 
-    private void LoadSkinFolder(SkinFolderValidation.Valid valid, bool logPath)
+    private async Task LoadSkinFolderAsync(SkinFolderValidation.Valid valid, bool logPath)
     {
         this.activeSkinFolderPath = valid.SkinFolderPath;
         this.RefreshGenerateAvailability();
@@ -303,7 +310,7 @@ public sealed class MainWindowViewModel : ViewModelBase
 
         try
         {
-            var config = this.skinIniReader.Read(valid.SkinIniPath);
+            var config = await this.skinIniReader.ReadAsync(valid.SkinIniPath, CancellationToken.None).ConfigureAwait(true);
             this.loadedSkinFolderPath = valid.SkinFolderPath;
             this.ApplyComboColour(config);
             this.Log($"  HitCirclePrefix: {config.HitCirclePrefix}");
@@ -339,7 +346,7 @@ public sealed class MainWindowViewModel : ViewModelBase
             }
 
             this.SkinFolderPath = path;
-            this.ConfirmSkinFolderPathInput(logPath: true);
+            await this.ConfirmSkinFolderPathAsync(logPath: true).ConfigureAwait(true);
         }
         catch (Exception ex)
         {

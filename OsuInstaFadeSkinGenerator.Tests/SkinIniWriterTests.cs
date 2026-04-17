@@ -1,5 +1,6 @@
+using OsuInstaFadeSkinGenerator.Infrastructure.Io;
+using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 using OsuInstaFadeSkinGenerator.Models;
-using OsuInstaFadeSkinGenerator.Services;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
@@ -8,7 +9,7 @@ public sealed class SkinIniWriterTests
     [Theory]
     [InlineData(2, 7, 8, 9, 64)]
     [InlineData(3, 4, 5, 6, 77)]
-    public void Update_Template_RewritesSupportedFieldsAndPreservesOtherLines(
+    public async Task Update_Template_RewritesSupportedFieldsAndPreservesOtherLines(
         int templateNumber,
         byte comboR,
         byte comboG,
@@ -19,10 +20,10 @@ public sealed class SkinIniWriterTests
         var originalContent = SkinIniTemplateFixture.GetTemplateContent(templateNumber);
         SkinIniTemplateFixture.WriteTemplateSkinIni(skinDir.RootPath, templateNumber);
 
-        var writer = new SkinIniWriter();
+        var writer = new SkinIniWriter(new PhysicalFileSystem());
         var skinIniPath = Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni);
 
-        writer.Update(skinIniPath, comboR, comboG, comboB, hitCircleOverlap);
+        await writer.UpdateAsync(skinIniPath, new RgbColor(comboR, comboG, comboB), hitCircleOverlap, CancellationToken.None);
 
         var updated = File.ReadAllText(skinIniPath);
         SkinIniTemplateFixture.AssertUpdatedSkinIni(
@@ -33,7 +34,7 @@ public sealed class SkinIniWriterTests
     }
 
     [Fact]
-    public void Update_TemplateDerivedSparseIni_AppendsMissingSectionsAndUsesDetectedIndent()
+    public async Task Update_TemplateDerivedSparseIni_AppendsMissingSectionsAndUsesDetectedIndent()
     {
         using var skinDir = new TestSkinDirectory();
         SkinTestHelper.WriteSkinIni(
@@ -49,10 +50,10 @@ public sealed class SkinIniWriterTests
                 Version: latest
             """);
 
-        var writer = new SkinIniWriter();
+        var writer = new SkinIniWriter(new PhysicalFileSystem());
         var skinIniPath = Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni);
 
-        writer.Update(skinIniPath, 1, 2, 3, 55);
+        await writer.UpdateAsync(skinIniPath, new RgbColor(1, 2, 3), 55, CancellationToken.None);
 
         var updated = File.ReadAllText(skinIniPath);
 

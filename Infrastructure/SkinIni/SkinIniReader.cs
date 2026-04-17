@@ -1,17 +1,26 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using OsuInstaFadeSkinGenerator.Application.Ports;
 using OsuInstaFadeSkinGenerator.Models;
 
-namespace OsuInstaFadeSkinGenerator.Services;
+namespace OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 
 public sealed class SkinIniReader : ISkinIniReader
 {
-    public SkinConfig Read(string skinIniPath)
+    private readonly IFileSystem fileSystem;
+
+    public SkinIniReader(IFileSystem fileSystem)
+    {
+        this.fileSystem = fileSystem;
+    }
+
+    public async Task<SkinConfig> ReadAsync(string skinIniPath, CancellationToken cancellationToken)
     {
         var builder = new SkinConfigBuilder();
-        var lines = File.ReadAllLines(skinIniPath);
+        var lines = await this.fileSystem.ReadAllLinesAsync(skinIniPath, cancellationToken).ConfigureAwait(false);
         string currentSection = string.Empty;
 
         foreach (var line in lines)

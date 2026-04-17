@@ -1,6 +1,8 @@
+using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace OsuInstaFadeSkinGenerator.Services;
+namespace OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 
 internal static partial class SkinIniCommon
 {
