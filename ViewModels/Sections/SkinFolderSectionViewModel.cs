@@ -10,7 +10,7 @@ public sealed partial class SkinFolderSectionViewModel : ObservableObject
 {
     private readonly IInputValidationService inputValidationService;
     private readonly ISkinIniReader skinIniReader;
-    private readonly IUserInteractionService userInteractionService;
+    private readonly IFilePickerService filePickerService;
     private string lastSubmittedSkinFolderPath = string.Empty;
     private string loadedSkinFolderPath = string.Empty;
 
@@ -24,11 +24,11 @@ public sealed partial class SkinFolderSectionViewModel : ObservableObject
     public SkinFolderSectionViewModel(
         IInputValidationService inputValidationService,
         ISkinIniReader skinIniReader,
-        IUserInteractionService userInteractionService)
+        IFilePickerService filePickerService)
     {
         this.inputValidationService = inputValidationService;
         this.skinIniReader = skinIniReader;
-        this.userInteractionService = userInteractionService;
+        this.filePickerService = filePickerService;
     }
 
     public event EventHandler<SkinConfig>? FolderLoaded;
@@ -47,7 +47,7 @@ public sealed partial class SkinFolderSectionViewModel : ObservableObject
     {
         try
         {
-            var path = await this.userInteractionService.PickSkinFolderAsync();
+            var path = await this.filePickerService.PickSkinFolderAsync();
             if (path == null)
             {
                 return;

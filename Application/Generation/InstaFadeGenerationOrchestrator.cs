@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using OsuInstaFadeSkinGenerator.Application.Generation.Steps;
 using OsuInstaFadeSkinGenerator.Application.Ports;
 using OsuInstaFadeSkinGenerator.Models;
@@ -14,17 +15,20 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
     private readonly ISkinIniWriter skinIniWriter;
     private readonly IFileSystem fileSystem;
     private readonly IImageIo imageIo;
+    private readonly ILogger<InstaFadeGenerationOrchestrator> logger;
 
     public InstaFadeGenerationOrchestrator(
         ISkinIniReader skinIniReader,
         ISkinIniWriter skinIniWriter,
         IFileSystem fileSystem,
-        IImageIo imageIo)
+        IImageIo imageIo,
+        ILogger<InstaFadeGenerationOrchestrator> logger)
     {
         this.skinIniReader = skinIniReader;
         this.skinIniWriter = skinIniWriter;
         this.fileSystem = fileSystem;
         this.imageIo = imageIo;
+        this.logger = logger;
     }
 
     public async Task<GenerationOutcome> GenerateAsync(
@@ -46,6 +50,7 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
         }
         catch (Exception ex)
         {
+            this.logger.LogError(ex, "Generation failed unexpectedly.");
             return new GenerationOutcome(GenerationStatus.Failed, GenerationError.Unexpected, $"Generation failed unexpectedly: {ex.Message}");
         }
     }

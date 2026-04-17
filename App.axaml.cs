@@ -1,19 +1,20 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using OsuInstaFadeSkinGenerator.Application.Generation;
-using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
-using OsuInstaFadeSkinGenerator.Infrastructure.Io;
-using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
-using OsuInstaFadeSkinGenerator.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using OsuInstaFadeSkinGenerator.Presentation.Composition;
 using OsuInstaFadeSkinGenerator.ViewModels;
-using OsuInstaFadeSkinGenerator.ViewModels.Sections;
 using OsuInstaFadeSkinGenerator.Views;
 
 namespace OsuInstaFadeSkinGenerator;
 
 public partial class App : Avalonia.Application
 {
+    private IHost? host;
+
+    public IServiceProvider? Services => this.host?.Services;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -23,26 +24,18 @@ public partial class App : Avalonia.Application
     {
         if (this.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var inputValidationService = new InputValidationService();
-            var fileSystem = new PhysicalFileSystem();
-            var skinIniReader = new SkinIniReader(fileSystem);
-            var skinIniWriter = new SkinIniWriter(fileSystem);
-            var imageIo = new ImageSharpImageIo();
-            var windowInteractionService = new WindowInteractionService();
-            var log = new GenerationLogViewModel(windowInteractionService);
-            var options = new GenerationOptionsViewModel();
-            var colour = new ColourSectionViewModel(inputValidationService);
-            var folder = new SkinFolderSectionViewModel(inputValidationService, skinIniReader, windowInteractionService);
-            var viewModel = new MainWindowViewModel(
-                inputValidationService,
-                new InstaFadeGenerationOrchestrator(skinIniReader, skinIniWriter, fileSystem, imageIo),
-                windowInteractionService,
-                folder,
-                colour,
-                options,
-                log);
+            var builder = Host.CreateApplicationBuilder();
+            builder.Services.AddGeneratorApp();
+            this.host = builder.Build();
 
-            desktop.MainWindow = new MainWindow(viewModel, windowInteractionService);
+            var mainWindow = this.host.Services.GetRequiredService<MainWindow>();
+            mainWindow.DataContext = this.host.Services.GetRequiredService<MainWindowViewModel>();
+            desktop.MainWindow = mainWindow;
+            desktop.Exit += (_, _) =>
+            {
+                this.host?.Dispose();
+                this.host = null;
+            };
         }
 
         base.OnFrameworkInitializationCompleted();

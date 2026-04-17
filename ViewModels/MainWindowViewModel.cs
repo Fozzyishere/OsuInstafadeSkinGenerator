@@ -3,9 +3,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using OsuInstaFadeSkinGenerator.Application.Generation;
 using OsuInstaFadeSkinGenerator.Application.Ports;
-using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
-using OsuInstaFadeSkinGenerator.Infrastructure.Io;
-using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
 using OsuInstaFadeSkinGenerator.Models;
 using OsuInstaFadeSkinGenerator.Services;
 using OsuInstaFadeSkinGenerator.ViewModels.Sections;
@@ -21,7 +18,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private readonly IInputValidationService inputValidationService;
     private readonly IGenerationService generationService;
-    private readonly IUserInteractionService userInteractionService;
+    private readonly IDialogService dialogService;
     private readonly Dictionary<string, string> validationErrors = [];
     private CancellationTokenSource? generationCts;
 
@@ -43,7 +40,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(
         IInputValidationService inputValidationService,
         IGenerationService generationService,
-        IUserInteractionService userInteractionService,
+        IDialogService dialogService,
         SkinFolderSectionViewModel folder,
         ColourSectionViewModel colour,
         GenerationOptionsViewModel options,
@@ -51,7 +48,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         this.inputValidationService = inputValidationService;
         this.generationService = generationService;
-        this.userInteractionService = userInteractionService;
+        this.dialogService = dialogService;
         this.Folder = folder;
         this.Colour = colour;
         this.Options = options;
@@ -86,29 +83,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         && this.Colour.AppliedColour != null
         && !string.IsNullOrWhiteSpace(this.Folder.ActiveSkinFolderPath);
 
-    public static MainWindowViewModel CreateDesignTime()
-    {
-        return CreateDesignTime(new WindowInteractionService());
-    }
-
-    public static MainWindowViewModel CreateDesignTime(IUserInteractionService userInteractionService)
-    {
-        var inputValidationService = new InputValidationService();
-        var fileSystem = new PhysicalFileSystem();
-        var skinIniReader = new SkinIniReader(fileSystem);
-        var skinIniWriter = new SkinIniWriter(fileSystem);
-        var imageIo = new ImageSharpImageIo();
-
-        return new MainWindowViewModel(
-            inputValidationService,
-            new InstaFadeGenerationOrchestrator(skinIniReader, skinIniWriter, fileSystem, imageIo),
-            userInteractionService,
-            new SkinFolderSectionViewModel(inputValidationService, skinIniReader, userInteractionService),
-            new ColourSectionViewModel(inputValidationService),
-            new GenerationOptionsViewModel(),
-            new GenerationLogViewModel(userInteractionService));
-    }
-
     [RelayCommand(CanExecute = nameof(CanGenerate))]
     private async Task GenerateAsync()
     {
@@ -126,7 +100,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         this.ClearValidationError(GenerationValidationKey);
 
-        var shouldProceed = await this.userInteractionService.ConfirmGenerationAsync();
+        var shouldProceed = await this.dialogService.ConfirmGenerationAsync();
         if (!shouldProceed)
         {
             this.Log.Append("Generation cancelled by user.");

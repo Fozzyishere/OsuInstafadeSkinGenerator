@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using OsuInstaFadeSkinGenerator.Application.Generation;
 using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
 using OsuInstaFadeSkinGenerator.Infrastructure.Io;
@@ -152,7 +153,8 @@ public sealed class InstaFadeGeneratorTests
             new SkinIniReader(fileSystem),
             new SkinIniWriter(fileSystem),
             fileSystem,
-            new ImageSharpImageIo());
+            new ImageSharpImageIo(),
+            NullLogger<InstaFadeGenerationOrchestrator>.Instance);
     }
 
     private static GenerationRequest CreateRequest(
