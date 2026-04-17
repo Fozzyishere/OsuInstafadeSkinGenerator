@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
-using OsuInstaFadeSkinGenerator.Domain;
 using OsuInstaFadeSkinGenerator.Application.Validation;
+using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 

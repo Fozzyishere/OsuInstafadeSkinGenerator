@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using OsuInstaFadeSkinGenerator.Application.Generation;
+using OsuInstaFadeSkinGenerator.Domain;
 using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
 using OsuInstaFadeSkinGenerator.Infrastructure.Io;
 using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
-using OsuInstaFadeSkinGenerator.Domain;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace OsuInstaFadeSkinGenerator.Tests;

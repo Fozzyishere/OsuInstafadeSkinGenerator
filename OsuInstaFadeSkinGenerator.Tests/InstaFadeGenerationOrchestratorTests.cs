@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using OsuInstaFadeSkinGenerator.Application.Generation;
 using OsuInstaFadeSkinGenerator.Application.Ports;
+using OsuInstaFadeSkinGenerator.Domain;
 using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
 using OsuInstaFadeSkinGenerator.Infrastructure.Io;
 using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
-using OsuInstaFadeSkinGenerator.Domain;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
