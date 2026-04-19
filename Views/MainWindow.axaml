@@ -39,7 +39,7 @@
                 <TextBlock
                     Classes="subtle"
                     FontSize="11"
-                    Text="Convert a skin folder to insta-fade hitcircles." />
+                    Text="convert any skin to insta-fade skins with some simple tweaks" />
             </StackPanel>
         </StackPanel>
 
@@ -85,7 +85,7 @@
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center"
                 Command="{Binding GenerateCommand}"
-                Content="Generate Insta-Fade"
+                Content="Generate Skin"
                 FontSize="14"
                 FontWeight="Bold"
                 IsVisible="{Binding !IsGenerating}"

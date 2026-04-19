@@ -4,19 +4,20 @@ A very barebones, terrible, and badly coded insta-fade skin generator
 
 ## Disclaimer
 
-This app is made for educational purposes (and a bit of fun) and is not intended to be used by people who don't know how to use it. **I am not responsible for any damages caused by this app so use it at your own risk**. Always make sure to back up your stuff before running sussy apps like this one.
+This app was made for educational purposes (and a bit of fun). **I am not responsible for any damages caused by this app so use it at your own risk**. Always make sure to back up your stuff before running sussy apps like this one.
 
-## Usage (Windows for now, since I don't play osu! on Linux)
+## Usage (Windows)
 
 ### osu!stable
 
-**Note:** If you know what you're doing just use the `Browse` button to make things quicker.
+0. Locate the osu! skin folder path you want to make adjustment to. It should be in `Skins\<Skin Name>` folder in your osu! installation directory (default is `C:\Users\<Username>\AppData\Local\osu!`). Another way to find it is to open the skin in osu! and select `Open current skin folder` in the skin options. It should open the skin folder in your file explorer.
 
-1. Locate your skin folder. You can either find it through osu! by pressing the `Open current skin folder` button with the skin you want to convert, or do it manually by finding the osu! installation directory (should be in `C:\Users\<Username>\AppData\Local\osu!` by default).
+1. Enter the osu! skin path into the app. You can do this by copying the path from the address bar in your file explorer and pasting it into the app's text box, then pressing Enter. Another option is to use the `Browse` button and point it to the skin folder. If you do it correctly, it shouldn't show any error in the log box and the first combo colour should be read and shown in the app. 
 
-2. Copy the path from the address bar and paste it into the text box.
+2. Adjust the settings as you like. Hover over each setting to see the tooltip for more information about what it does.
 
-3. Make adjustments to the output using the selected options. You can change the combo colour (one colour, though — I reckon you aren't that insane to use RGB combo colours with a white insta-fade skin), back up some parts of your skin elements in case you want to roll back, process @2x elements, or even create a triplestacked skin. Tooltip should give you enough information on what each option does. If not, just YOLO it :ujel:
+3. When sastisfied with the settings, click the `Generate` button. It should generate the insta-fade skin and save it in the same folder as the original skin.
+
 
 **For example**, the skin I want to convert is `D:\Games\osu-stable\Skins\Rafis HDDT 2024` as seen in the screenshot below (you might need to left-click your mouse into the white spaces in the address bar on the right for the full path to show up).
 
