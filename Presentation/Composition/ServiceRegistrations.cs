@@ -20,10 +20,11 @@ public static class ServiceRegistrations
     {
         services.AddLogging(builder => builder.AddDebug());
 
-        services.AddSingleton<IFileSystem, PhysicalFileSystem>();
+        services.AddSingleton<PhysicalFileSystem>(sp => new PhysicalFileSystem(sp.GetRequiredService<ILogger<PhysicalFileSystem>>()));
+        services.AddSingleton<IFileSystem>(sp => sp.GetRequiredService<PhysicalFileSystem>());
         services.AddSingleton<ISkinIniReader, SkinIniReader>();
         services.AddSingleton<ISkinIniWriter, SkinIniWriter>();
-        services.AddSingleton<IImageIo, ImageSharpImageIo>();
+        services.AddSingleton<IImageIo>(sp => new ImageSharpImageIo(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<IInputValidationService, InputValidationService>();
         services.AddSingleton<IGenerationService, InstaFadeGenerationOrchestrator>();
 

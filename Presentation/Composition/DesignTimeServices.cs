@@ -21,7 +21,7 @@ public static class DesignTimeServices
         var fileSystem = new PhysicalFileSystem();
         var skinIniReader = new SkinIniReader(fileSystem);
         var skinIniWriter = new SkinIniWriter(fileSystem);
-        var imageIo = new ImageSharpImageIo();
+        var imageIo = new ImageSharpImageIo(fileSystem);
         var orchestrator = new InstaFadeGenerationOrchestrator(
             skinIniReader,
             skinIniWriter,

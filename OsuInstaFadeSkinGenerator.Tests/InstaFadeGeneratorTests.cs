@@ -158,7 +158,7 @@ public sealed class InstaFadeGeneratorTests
             new SkinIniReader(fileSystem),
             new SkinIniWriter(fileSystem),
             fileSystem,
-            new ImageSharpImageIo(),
+            new ImageSharpImageIo(fileSystem),
             NullLogger<InstaFadeGenerationOrchestrator>.Instance);
     }
 
