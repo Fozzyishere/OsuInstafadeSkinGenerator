@@ -59,6 +59,7 @@ public sealed class PhysicalFileSystem : IFileSystem
         try
         {
             await writeTempFileAsync(tempPath, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
             File.Move(tempPath, fullDestination, overwrite: true);
             moved = true;
         }
