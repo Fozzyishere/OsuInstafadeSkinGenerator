@@ -23,7 +23,7 @@ public static class ServiceRegistrations
         services.AddSingleton<IFileSystem, PhysicalFileSystem>();
         services.AddSingleton<ISkinIniReader, SkinIniReader>();
         services.AddSingleton<ISkinIniWriter, SkinIniWriter>();
-        services.AddSingleton<IImageIo, ImageSharpImageIo>();
+        services.AddSingleton<IImageIo>(sp => new ImageSharpImageIo(sp.GetRequiredService<IFileSystem>()));
         services.AddSingleton<IInputValidationService, InputValidationService>();
         services.AddSingleton<IGenerationService, InstaFadeGenerationOrchestrator>();
 

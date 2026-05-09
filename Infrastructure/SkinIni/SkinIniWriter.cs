@@ -85,7 +85,7 @@ public sealed class SkinIniWriter : ISkinIniWriter
             AppendNewSection(result, "[Fonts]", $"HitCircleOverlap: {hitCircleOverlap}", indent);
         }
 
-        await this.fileSystem.WriteAllLinesAsync(skinIniPath, result, cancellationToken).ConfigureAwait(false);
+        await this.fileSystem.WriteAllLinesAtomicallyAsync(skinIniPath, result, cancellationToken).ConfigureAwait(false);
     }
 
     private static void FlushSection(

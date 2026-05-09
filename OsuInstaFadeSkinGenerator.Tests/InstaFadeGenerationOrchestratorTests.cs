@@ -151,7 +151,7 @@ public sealed class InstaFadeGenerationOrchestratorTests
             new SkinIniReader(fileSystem),
             new SkinIniWriter(fileSystem),
             fileSystem,
-            new ImageSharpImageIo(),
+            new ImageSharpImageIo(fileSystem),
             NullLogger<InstaFadeGenerationOrchestrator>.Instance);
     }
 
@@ -182,17 +182,23 @@ public sealed class InstaFadeGenerationOrchestratorTests
         private readonly Action<string>? onDirectoryExists;
         private readonly Action<string>? onFileExists;
         private readonly Action<string>? onReadAllLinesAsync;
+        private readonly Action<string, IEnumerable<string>, CancellationToken>? onWriteAllLinesAtomicallyAsync;
+        private readonly Action<string, Func<string, CancellationToken, Task>, CancellationToken>? onReplaceFileAtomicallyAsync;
 
         public ThrowingFileSystem(
             IFileSystem inner,
             Action<string>? onDirectoryExists = null,
             Action<string>? onFileExists = null,
-            Action<string>? onReadAllLinesAsync = null)
+            Action<string>? onReadAllLinesAsync = null,
+            Action<string, IEnumerable<string>, CancellationToken>? onWriteAllLinesAtomicallyAsync = null,
+            Action<string, Func<string, CancellationToken, Task>, CancellationToken>? onReplaceFileAtomicallyAsync = null)
         {
             this.inner = inner;
             this.onDirectoryExists = onDirectoryExists;
             this.onFileExists = onFileExists;
             this.onReadAllLinesAsync = onReadAllLinesAsync;
+            this.onWriteAllLinesAtomicallyAsync = onWriteAllLinesAtomicallyAsync;
+            this.onReplaceFileAtomicallyAsync = onReplaceFileAtomicallyAsync;
         }
 
         public bool DirectoryExists(string path)
@@ -218,7 +224,19 @@ public sealed class InstaFadeGenerationOrchestratorTests
             return this.inner.ReadAllLinesAsync(path, cancellationToken);
         }
 
-        public Task WriteAllLinesAsync(string path, IEnumerable<string> lines, CancellationToken cancellationToken)
-            => this.inner.WriteAllLinesAsync(path, lines, cancellationToken);
+        public Task WriteAllLinesAtomicallyAsync(string path, IEnumerable<string> lines, CancellationToken cancellationToken)
+        {
+            this.onWriteAllLinesAtomicallyAsync?.Invoke(path, lines, cancellationToken);
+            return this.inner.WriteAllLinesAtomicallyAsync(path, lines, cancellationToken);
+        }
+
+        public Task ReplaceFileAtomicallyAsync(
+            string destinationPath,
+            Func<string, CancellationToken, Task> writeTempFileAsync,
+            CancellationToken cancellationToken)
+        {
+            this.onReplaceFileAtomicallyAsync?.Invoke(destinationPath, writeTempFileAsync, cancellationToken);
+            return this.inner.ReplaceFileAtomicallyAsync(destinationPath, writeTempFileAsync, cancellationToken);
+        }
     }
 }

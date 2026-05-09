@@ -11,6 +11,13 @@ namespace OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
 
 public sealed class ImageSharpImageIo : IImageIo
 {
+    private readonly IFileSystem fileSystem;
+
+    public ImageSharpImageIo(IFileSystem fileSystem)
+    {
+        this.fileSystem = fileSystem;
+    }
+
     public Task<Image<Rgba32>> LoadAsync(string path, CancellationToken cancellationToken)
     {
         var displayPath = GetDisplayPath(path);
@@ -23,7 +30,10 @@ public sealed class ImageSharpImageIo : IImageIo
     {
         var displayPath = GetDisplayPath(path);
         return ResilientFileOperations.RunAsync(
-            () => image.SaveAsPngAsync(path, cancellationToken),
+            () => this.fileSystem.ReplaceFileAtomicallyAsync(
+                path,
+                (tempPath, ct) => image.SaveAsPngAsync(tempPath, ct),
+                cancellationToken),
             GenerationError.IoFailure,
             $"write {displayPath}");
     }

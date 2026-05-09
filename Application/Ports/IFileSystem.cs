@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,5 +17,10 @@ public interface IFileSystem
 
     Task<string[]> ReadAllLinesAsync(string path, CancellationToken cancellationToken);
 
-    Task WriteAllLinesAsync(string path, IEnumerable<string> lines, CancellationToken cancellationToken);
+    Task WriteAllLinesAtomicallyAsync(string path, IEnumerable<string> lines, CancellationToken cancellationToken);
+
+    Task ReplaceFileAtomicallyAsync(
+        string destinationPath,
+        Func<string, CancellationToken, Task> writeTempFileAsync,
+        CancellationToken cancellationToken);
 }
