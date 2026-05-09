@@ -50,11 +50,7 @@ public sealed class PhysicalFileSystem : IFileSystem
         ArgumentNullException.ThrowIfNull(writeTempFileAsync);
 
         var fullDestination = Path.GetFullPath(destinationPath);
-        var directory = Path.GetDirectoryName(fullDestination);
-        if (string.IsNullOrEmpty(directory))
-        {
-            throw new ArgumentException("Destination path does not have a valid directory.", nameof(destinationPath));
-        }
+        var directory = Path.GetDirectoryName(fullDestination) ?? Directory.GetCurrentDirectory();
 
         var fileName = Path.GetFileName(fullDestination);
         var tempPath = Path.Combine(directory, $"{fileName}.{Guid.NewGuid():N}.tmp");

@@ -130,4 +130,25 @@ public sealed class PhysicalFileSystemTests
         Assert.Equal("original", await File.ReadAllTextAsync(targetPath));
         Assert.Empty(Directory.GetFiles(dir.RootPath, "*.tmp"));
     }
+
+    [Fact]
+    public async Task WriteAllLinesAtomicallyAsync_WithFileNameOnly_WritesToCurrentDirectory()
+    {
+        var fs = new PhysicalFileSystem();
+        var fileName = $"atomic-relative-{Guid.NewGuid():N}.txt";
+        var fullPath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+
+        try
+        {
+            await fs.WriteAllLinesAtomicallyAsync(fileName, new[] { "relative", "write" }, CancellationToken.None);
+            Assert.Equal(new[] { "relative", "write" }, await File.ReadAllLinesAsync(fullPath));
+        }
+        finally
+        {
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
+        }
+    }
 }
