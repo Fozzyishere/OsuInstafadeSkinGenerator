@@ -7,5 +7,6 @@ public enum GenerationError
     MissingHdAsset,
     IoFailure,
     ImageDecodeFailure,
+    RollbackFailed,
     Unexpected,
 }

@@ -13,7 +13,17 @@ public interface IFileSystem
 
     void CreateDirectory(string path);
 
+    string CreateTemporaryDirectory(string parentDirectory, string prefix);
+
     void CopyFile(string sourcePath, string destinationPath, bool overwrite);
+
+    Task CopyFileAtomicallyAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken);
+
+    void DeleteFileIfExists(string path);
+
+    void DeleteDirectoryIfExists(string path, bool recursive);
+
+    bool TryDeleteEmptyDirectory(string path);
 
     Task<string[]> ReadAllLinesAsync(string path, CancellationToken cancellationToken);
 

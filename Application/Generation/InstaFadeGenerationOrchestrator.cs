@@ -60,7 +60,10 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
         IProgress<GenerationProgress>? progress,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return this.Cancelled();
+        }
 
         var skinFolder = request.SkinFolderPath;
         var skinIniPath = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
@@ -77,25 +80,43 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
 
         this.Report(progress, GenerationPhase.ReadingIni, PhaseWeights.ReadingIniStart, "Reading skin.ini...");
         var config = await ResilientFileOperations.RunAsync(
-            () => this.skinIniReader.ReadAsync(skinIniPath, cancellationToken),
+            () => this.skinIniReader.ReadAsync(skinIniPath, CancellationToken.None),
             GenerationError.IoFailure,
             "read skin.ini").ConfigureAwait(false);
         var prefix = config.HitCirclePrefix;
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return this.Cancelled();
+        }
 
         this.Report(progress, GenerationPhase.ReadingIni, PhaseWeights.ReadingIniSkinMeta, $"  Skin: {config.Name} (v{config.Version}) by {config.Author}");
         this.Report(progress, GenerationPhase.ReadingIni, PhaseWeights.ReadingIniPrefix, $"  HitCirclePrefix: {prefix}");
         this.Report(progress, GenerationPhase.ReadingIni, PhaseWeights.ReadingIniOverlay, $"  OverlayAboveNumber: {config.HitCircleOverlayAboveNumber}");
 
+        using var transaction = GenerationTransaction.Create(skinFolder, this.fileSystem);
+
         if (request.BackupFiles)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return this.Cancelled();
+            }
+
             this.Report(progress, GenerationPhase.CreatingBackup, PhaseWeights.BackupStart, "Creating backup...");
-            await BackupStep.RunAsync(skinFolder, prefix, this.fileSystem, cancellationToken).ConfigureAwait(false);
+            if (!await BackupStep.StageAsync(skinFolder, prefix, transaction, this.fileSystem, cancellationToken).ConfigureAwait(false))
+            {
+                return this.Cancelled();
+            }
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return this.Cancelled();
+        }
+
         this.Report(progress, GenerationPhase.ProcessingSd, PhaseWeights.SdStart, "Processing SD images...");
-        var sdOutcome = await VariantProcessingStep.RunAsync(
+        var sdResult = await VariantProcessingStep.RunAsync(
             skinFolder,
             prefix,
             string.Empty,
@@ -106,16 +127,22 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
             GenerationPhase.ProcessingSd,
             this.fileSystem,
             this.imageIo,
+            transaction.CreateStagedPathForTarget,
             cancellationToken).ConfigureAwait(false);
-        if (sdOutcome.Status != GenerationStatus.Succeeded)
+        if (sdResult.Outcome.Status != GenerationStatus.Succeeded)
         {
-            return sdOutcome;
+            return sdResult.Outcome;
         }
 
         bool hdProcessed = false;
+        var hdDefaultNumberWidth = 0;
         if (request.ProcessHd)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return this.Cancelled();
+            }
+
             this.Report(progress, GenerationPhase.ProcessingHd, PhaseWeights.HdStart, "Processing HD (@2x) images...");
             var missingHdAssets = HdPrerequisiteCheck.FindMissingHdAssets(skinFolder, this.fileSystem);
             if (missingHdAssets.Count > 0)
@@ -139,7 +166,7 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
             }
             else
             {
-                var hdOutcome = await VariantProcessingStep.RunAsync(
+                var hdResult = await VariantProcessingStep.RunAsync(
                     skinFolder,
                     prefix,
                     SkinAssetNames.HdSuffix,
@@ -150,32 +177,57 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
                     GenerationPhase.ProcessingHd,
                     this.fileSystem,
                     this.imageIo,
+                    transaction.CreateStagedPathForTarget,
                     cancellationToken).ConfigureAwait(false);
-                if (hdOutcome.Status != GenerationStatus.Succeeded)
+                if (hdResult.Outcome.Status != GenerationStatus.Succeeded)
                 {
-                    return hdOutcome;
+                    return hdResult.Outcome;
                 }
 
                 hdProcessed = true;
+                hdDefaultNumberWidth = hdResult.GeneratedDefaultNumberWidth;
             }
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return this.Cancelled();
+        }
+
         this.Report(progress, GenerationPhase.UpdatingIni, PhaseWeights.UpdatingIniStart, "Updating skin.ini...");
-        var overlapWidth = await SkinIniUpdateStep.ComputeOverlapWidthAsync(
-            skinFolder,
-            prefix,
-            hdProcessed,
-            this.fileSystem,
-            this.imageIo,
-            cancellationToken).ConfigureAwait(false);
+        var overlapWidth = sdResult.GeneratedDefaultNumberWidth > 0
+            ? sdResult.GeneratedDefaultNumberWidth
+            : hdProcessed
+                ? hdDefaultNumberWidth / 2
+                : 0;
+        var stagedSkinIniPath = transaction.CreateStagedPathForTarget(skinIniPath);
+        await ResilientFileOperations.RunAsync(
+            () => this.fileSystem.CopyFileAtomicallyAsync(skinIniPath, stagedSkinIniPath, CancellationToken.None),
+            GenerationError.IoFailure,
+            "stage skin.ini").ConfigureAwait(false);
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return this.Cancelled();
+        }
 
         await SkinIniUpdateStep.RunAsync(
-            skinIniPath,
+            stagedSkinIniPath,
             request.ComboColor,
             overlapWidth > 0 ? overlapWidth : 0,
             this.skinIniWriter,
-            cancellationToken).ConfigureAwait(false);
+            CancellationToken.None).ConfigureAwait(false);
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return this.Cancelled();
+        }
+
+        this.Report(progress, GenerationPhase.UpdatingIni, PhaseWeights.UpdatingIniStart, "Committing generated files...");
+        if (!await transaction.CommitAsync(progress, cancellationToken).ConfigureAwait(false))
+        {
+            return this.Cancelled();
+        }
 
         this.Report(progress, GenerationPhase.Done, PhaseWeights.Done, "Done!");
         return new GenerationOutcome(GenerationStatus.Succeeded, null, "Insta-fade hitcircles generated successfully.");
@@ -190,4 +242,7 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
     {
         progress?.Report(new GenerationProgress(phase, fraction, message, warning));
     }
+
+    private GenerationOutcome Cancelled() =>
+        new(GenerationStatus.Cancelled, null, "Generation cancelled.");
 }

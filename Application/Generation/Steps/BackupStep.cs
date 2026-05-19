@@ -18,23 +18,32 @@ internal static class BackupStep
 
     private static readonly string[] VariantSuffixes = [string.Empty, SkinAssetNames.HdSuffix];
 
-    public static Task RunAsync(string skinFolder, string prefix, IFileSystem fileSystem, CancellationToken cancellationToken)
+    public static async Task<bool> StageAsync(
+        string skinFolder,
+        string prefix,
+        GenerationTransaction transaction,
+        IFileSystem fileSystem,
+        CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
 
         var backupDir = Path.Combine(skinFolder, SkinAssetNames.BackupFolder);
-        ResilientFileOperations.Run(
-            () => fileSystem.CreateDirectory(backupDir),
-            GenerationError.IoFailure,
-            $"create backup folder {GetDisplayPath(backupDir)}");
 
         foreach (var name in OriginalAssetNames)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return false;
+            }
+
             var src = Path.Combine(skinFolder, name);
             if (fileSystem.FileExists(src))
             {
-                CopyToBackup(fileSystem, src, Path.Combine(backupDir, name));
+                await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, name), cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
 
@@ -42,7 +51,11 @@ internal static class BackupStep
         {
             for (int i = 0; i <= 9; i++)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
                 var src = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, i.ToString(), hdSuffix);
                 if (!fileSystem.FileExists(src))
                 {
@@ -50,25 +63,33 @@ internal static class BackupStep
                 }
 
                 var destName = Path.GetFileName(src);
-                CopyToBackup(fileSystem, src, Path.Combine(backupDir, destName));
+                await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, destName), cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
 
         var iniSrc = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
         if (fileSystem.FileExists(iniSrc))
         {
-            CopyToBackup(fileSystem, iniSrc, Path.Combine(backupDir, SkinAssetNames.SkinIni));
+            await StageCopyToBackupAsync(fileSystem, transaction, iniSrc, Path.Combine(backupDir, SkinAssetNames.SkinIni), cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        return Task.CompletedTask;
+        return !cancellationToken.IsCancellationRequested;
     }
 
-    private static void CopyToBackup(IFileSystem fileSystem, string sourcePath, string destinationPath)
+    private static async Task StageCopyToBackupAsync(
+        IFileSystem fileSystem,
+        GenerationTransaction transaction,
+        string sourcePath,
+        string destinationPath,
+        CancellationToken cancellationToken)
     {
-        ResilientFileOperations.Run(
-            () => fileSystem.CopyFile(sourcePath, destinationPath, overwrite: true),
+        var stagedPath = transaction.CreateStagedPathForTarget(destinationPath);
+        await ResilientFileOperations.RunAsync(
+            () => fileSystem.CopyFileAtomicallyAsync(sourcePath, stagedPath, CancellationToken.None),
             GenerationError.IoFailure,
-            $"back up {GetDisplayPath(sourcePath)}");
+            $"stage backup for {GetDisplayPath(sourcePath)}").ConfigureAwait(false);
     }
 
     private static string GetDisplayPath(string path)

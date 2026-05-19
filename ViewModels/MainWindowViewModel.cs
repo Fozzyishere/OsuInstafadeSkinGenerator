@@ -27,6 +27,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IDialogService dialogService;
     private readonly Dictionary<string, string> validationErrors = [];
     private CancellationTokenSource? generationCts;
+    private bool closeBlockedMessageShown;
 
     [ObservableProperty]
     private string errorText = string.Empty;
@@ -40,11 +41,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool hasBlockingErrors;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGenerating))]
     [NotifyPropertyChangedFor(nameof(IsInputEnabled))]
     [NotifyPropertyChangedFor(nameof(CanGenerate))]
+    [NotifyPropertyChangedFor(nameof(CanCancel))]
+    [NotifyPropertyChangedFor(nameof(IsCloseBlocked))]
+    [NotifyPropertyChangedFor(nameof(CancelButtonText))]
     [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
     [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
-    private bool isGenerating;
+    private GenerationRunState generationRunState;
 
     public MainWindowViewModel(
         IInputValidationService inputValidationService,
@@ -82,15 +87,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     public GenerationLogViewModel Log { get; }
 
-    public bool IsInputEnabled => !this.IsGenerating;
+    public bool IsGenerating => this.GenerationRunState != GenerationRunState.Idle;
+
+    public bool IsInputEnabled => this.GenerationRunState == GenerationRunState.Idle;
 
     public bool CanGenerate =>
-        !this.IsGenerating
+        this.GenerationRunState == GenerationRunState.Idle
         && !this.HasBlockingErrors
         && !this.Folder.HasPendingConfirmation
         && !this.Colour.HasPendingConfirmation
         && this.Colour.AppliedColour != null
         && !string.IsNullOrWhiteSpace(this.Folder.ActiveSkinFolderPath);
+
+    public bool CanCancel => this.GenerationRunState == GenerationRunState.Generating;
+
+    public bool IsCloseBlocked => this.GenerationRunState != GenerationRunState.Idle;
+
+    public string CancelButtonText => this.GenerationRunState switch
+    {
+        GenerationRunState.Cancelling => "Cancelling...",
+        GenerationRunState.RollingBack => "Restoring...",
+        _ => "Cancel and restore",
+    };
+
+    public void NotifyCloseBlocked()
+    {
+        if (!this.IsCloseBlocked || this.closeBlockedMessageShown)
+        {
+            return;
+        }
+
+        this.closeBlockedMessageShown = true;
+        this.Log.Append("Please wait for generation, cancellation, or restore to finish before closing the app.");
+    }
 
     [RelayCommand(CanExecute = nameof(CanGenerate))]
     private async Task GenerateAsync()
@@ -116,12 +145,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        this.SetGenerating(true);
+        this.closeBlockedMessageShown = false;
+        this.SetGenerationRunState(GenerationRunState.Generating);
         this.generationCts = new CancellationTokenSource();
 
         try
         {
-            var progress = new Progress<GenerationProgress>(this.Log.ReportProgress);
+            var progress = new Progress<GenerationProgress>(this.OnGenerationProgress);
             var outcome = await this.generationService.GenerateAsync(request, progress, this.generationCts.Token);
 
             switch (outcome.Status)
@@ -152,13 +182,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             this.generationCts?.Dispose();
             this.generationCts = null;
-            this.SetGenerating(false);
+            this.SetGenerationRunState(GenerationRunState.Idle);
         }
     }
 
-    [RelayCommand(CanExecute = nameof(IsGenerating))]
+    [RelayCommand(CanExecute = nameof(CanCancel))]
     private void Cancel()
     {
+        if (!this.CanCancel)
+        {
+            return;
+        }
+
+        this.SetGenerationRunState(GenerationRunState.Cancelling);
+        this.Log.Append("Cancelling... restoring original files before unlocking.");
         this.generationCts?.Cancel();
     }
 
@@ -240,10 +277,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void SetGenerating(bool running)
+    private void OnGenerationProgress(GenerationProgress progress)
     {
-        this.IsGenerating = running;
-        if (running)
+        if (progress.Phase == GenerationPhase.RollingBack && this.GenerationRunState != GenerationRunState.Idle)
+        {
+            this.SetGenerationRunState(GenerationRunState.RollingBack);
+        }
+
+        this.Log.ReportProgress(progress);
+    }
+
+    private void SetGenerationRunState(GenerationRunState state)
+    {
+        this.GenerationRunState = state;
+        if (state == GenerationRunState.Generating)
         {
             this.Log.ProgressValue = 0;
         }

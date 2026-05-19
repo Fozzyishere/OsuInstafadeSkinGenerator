@@ -96,11 +96,11 @@
                 HorizontalAlignment="Stretch"
                 HorizontalContentAlignment="Center"
                 Command="{Binding CancelCommand}"
-                Content="Cancel"
+                Content="{Binding CancelButtonText}"
                 FontSize="14"
                 FontWeight="Bold"
                 IsVisible="{Binding IsGenerating}"
-                ToolTip.Tip="Stop the running generation at the next safe checkpoint." />
+                ToolTip.Tip="Cancel generation and restore the selected skin to its original state." />
         </Grid>
     </Grid>
 </Window>
