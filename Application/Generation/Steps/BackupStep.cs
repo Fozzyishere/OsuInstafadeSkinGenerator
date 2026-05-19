@@ -42,7 +42,7 @@ internal static class BackupStep
             var src = Path.Combine(skinFolder, name);
             if (fileSystem.FileExists(src))
             {
-                await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, name), cancellationToken)
+                await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, name))
                     .ConfigureAwait(false);
             }
         }
@@ -63,7 +63,7 @@ internal static class BackupStep
                 }
 
                 var destName = Path.GetFileName(src);
-                await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, destName), cancellationToken)
+                await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, destName))
                     .ConfigureAwait(false);
             }
         }
@@ -71,7 +71,7 @@ internal static class BackupStep
         var iniSrc = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
         if (fileSystem.FileExists(iniSrc))
         {
-            await StageCopyToBackupAsync(fileSystem, transaction, iniSrc, Path.Combine(backupDir, SkinAssetNames.SkinIni), cancellationToken)
+            await StageCopyToBackupAsync(fileSystem, transaction, iniSrc, Path.Combine(backupDir, SkinAssetNames.SkinIni))
                 .ConfigureAwait(false);
         }
 
@@ -82,8 +82,7 @@ internal static class BackupStep
         IFileSystem fileSystem,
         GenerationTransaction transaction,
         string sourcePath,
-        string destinationPath,
-        CancellationToken cancellationToken)
+        string destinationPath)
     {
         var stagedPath = transaction.CreateStagedPathForTarget(destinationPath);
         await ResilientFileOperations.RunAsync(

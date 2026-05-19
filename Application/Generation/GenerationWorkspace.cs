@@ -29,6 +29,9 @@ internal sealed class GenerationWorkspace : IDisposable
 
     public static GenerationWorkspace Create(string skinFolder, IFileSystem fileSystem)
     {
+        ArgumentNullException.ThrowIfNull(skinFolder);
+        ArgumentNullException.ThrowIfNull(fileSystem);
+
         var rootPath = ResilientFileOperations.Run(
             () => fileSystem.CreateTemporaryDirectory(skinFolder, WorkspacePrefix),
             GenerationError.IoFailure,

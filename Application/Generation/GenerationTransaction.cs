@@ -25,7 +25,18 @@ internal sealed class GenerationTransaction : IDisposable
         this.targetPaths = new HashSet<string>(GetPathComparer());
     }
 
-    public static GenerationTransaction Create(string skinFolder, IFileSystem fileSystem) => new(skinFolder, fileSystem);
+    public static GenerationTransaction Create(string skinFolder, IFileSystem fileSystem)
+    {
+        ArgumentNullException.ThrowIfNull(skinFolder);
+        if (string.IsNullOrWhiteSpace(skinFolder))
+        {
+            throw new ArgumentException("Skin folder path must not be empty or whitespace.", nameof(skinFolder));
+        }
+
+        ArgumentNullException.ThrowIfNull(fileSystem);
+
+        return new GenerationTransaction(skinFolder, fileSystem);
+    }
 
     public string CreateStagedPathForTarget(string targetPath)
     {

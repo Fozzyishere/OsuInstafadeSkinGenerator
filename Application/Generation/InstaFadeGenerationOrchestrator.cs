@@ -214,7 +214,7 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
         await SkinIniUpdateStep.RunAsync(
             stagedSkinIniPath,
             request.ComboColor,
-            overlapWidth > 0 ? overlapWidth : 0,
+            overlapWidth,
             this.skinIniWriter,
             CancellationToken.None).ConfigureAwait(false);
 
