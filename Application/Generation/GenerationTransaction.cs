@@ -115,7 +115,9 @@ internal sealed class GenerationTransaction : IDisposable
     }
 
     private static StringComparer GetPathComparer() =>
-        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
 
     private async Task<bool> SnapshotTargetsAsync(CancellationToken cancellationToken)
     {

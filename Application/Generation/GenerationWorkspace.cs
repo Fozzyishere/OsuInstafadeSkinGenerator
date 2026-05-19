@@ -17,8 +17,31 @@ internal sealed class GenerationWorkspace : IDisposable
         this.RootPath = rootPath;
         this.StagingPath = Path.Combine(rootPath, "staging");
         this.SnapshotPath = Path.Combine(rootPath, "snapshot");
-        this.fileSystem.CreateDirectory(this.StagingPath);
-        this.fileSystem.CreateDirectory(this.SnapshotPath);
+
+        try
+        {
+            ResilientFileOperations.Run(
+                () =>
+                {
+                    this.fileSystem.CreateDirectory(this.StagingPath);
+                    this.fileSystem.CreateDirectory(this.SnapshotPath);
+                },
+                GenerationError.IoFailure,
+                "create generation workspace folders");
+        }
+        catch
+        {
+            try
+            {
+                this.fileSystem.DeleteDirectoryIfExists(this.RootPath, recursive: true);
+            }
+            catch
+            {
+                // Preserve the original workspace-creation failure.
+            }
+
+            throw;
+        }
     }
 
     public string RootPath { get; }

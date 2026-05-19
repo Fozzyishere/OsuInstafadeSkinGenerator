@@ -65,17 +65,29 @@ public sealed class PhysicalFileSystem : IFileSystem
 
     public void DeleteFileIfExists(string path)
     {
-        if (File.Exists(path))
+        try
         {
             File.Delete(path);
+        }
+        catch (FileNotFoundException)
+        {
+        }
+        catch (DirectoryNotFoundException)
+        {
         }
     }
 
     public void DeleteDirectoryIfExists(string path, bool recursive)
     {
-        if (Directory.Exists(path))
+        try
         {
             Directory.Delete(path, recursive);
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
+        catch (FileNotFoundException)
+        {
         }
     }
 

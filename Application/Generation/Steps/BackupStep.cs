@@ -73,6 +73,11 @@ internal static class BackupStep
             var iniSrc = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
             if (fileSystem.FileExists(iniSrc))
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
                 await StageCopyToBackupAsync(fileSystem, transaction, iniSrc, Path.Combine(backupDir, SkinAssetNames.SkinIni), cancellationToken)
                     .ConfigureAwait(false);
             }
