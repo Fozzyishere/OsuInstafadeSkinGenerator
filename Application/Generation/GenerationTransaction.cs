@@ -94,7 +94,7 @@ internal sealed class GenerationTransaction : IDisposable
                 }
             }
         }
-        catch (Exception ex) when (ex is GenerationFailureException or IOException or UnauthorizedAccessException)
+        catch (Exception ex)
         {
             await this.RollBackAfterCommitFailureAsync(progress, ex).ConfigureAwait(false);
             throw;
@@ -119,34 +119,41 @@ internal sealed class GenerationTransaction : IDisposable
 
     private async Task<bool> SnapshotTargetsAsync(CancellationToken cancellationToken)
     {
-        for (var i = 0; i < this.changes.Count; i++)
+        try
         {
-            if (cancellationToken.IsCancellationRequested)
+            for (var i = 0; i < this.changes.Count; i++)
             {
-                return false;
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
+
+                var change = this.changes[i];
+                change.OriginalExists = this.fileSystem.FileExists(change.TargetPath);
+                if (!change.OriginalExists)
+                {
+                    continue;
+                }
+
+                var snapshotPath = Path.Combine(this.workspace.SnapshotPath, $"{i:D4}{Path.GetExtension(change.TargetPath)}");
+                await ResilientFileOperations.RunAsync(
+                    () => this.fileSystem.CopyFileAtomicallyAsync(change.TargetPath, snapshotPath, cancellationToken),
+                    GenerationError.IoFailure,
+                    $"snapshot {SkinPathResolver.GetDisplayPath(change.TargetPath)}").ConfigureAwait(false);
+                change.SnapshotPath = snapshotPath;
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return false;
+                }
             }
 
-            var change = this.changes[i];
-            change.OriginalExists = this.fileSystem.FileExists(change.TargetPath);
-            if (!change.OriginalExists)
-            {
-                continue;
-            }
-
-            var snapshotPath = Path.Combine(this.workspace.SnapshotPath, $"{i:D4}{Path.GetExtension(change.TargetPath)}");
-            await ResilientFileOperations.RunAsync(
-                () => this.fileSystem.CopyFileAtomicallyAsync(change.TargetPath, snapshotPath, CancellationToken.None),
-                GenerationError.IoFailure,
-                $"snapshot {SkinPathResolver.GetDisplayPath(change.TargetPath)}").ConfigureAwait(false);
-            change.SnapshotPath = snapshotPath;
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return false;
-            }
+            return true;
         }
-
-        return true;
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
     }
 
     private async Task RollBackAfterCommitFailureAsync(IProgress<GenerationProgress>? progress, Exception? originalException)

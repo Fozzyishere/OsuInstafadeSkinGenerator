@@ -80,7 +80,7 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
 
         this.Report(progress, GenerationPhase.ReadingIni, PhaseWeights.ReadingIniStart, "Reading skin.ini...");
         var config = await ResilientFileOperations.RunAsync(
-            () => this.skinIniReader.ReadAsync(skinIniPath, CancellationToken.None),
+            () => this.skinIniReader.ReadAsync(skinIniPath, cancellationToken),
             GenerationError.IoFailure,
             "read skin.ini").ConfigureAwait(false);
         var prefix = config.HitCirclePrefix;
@@ -202,7 +202,7 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
                 : 0;
         var stagedSkinIniPath = transaction.CreateStagedPathForTarget(skinIniPath);
         await ResilientFileOperations.RunAsync(
-            () => this.fileSystem.CopyFileAtomicallyAsync(skinIniPath, stagedSkinIniPath, CancellationToken.None),
+            () => this.fileSystem.CopyFileAtomicallyAsync(skinIniPath, stagedSkinIniPath, cancellationToken),
             GenerationError.IoFailure,
             "stage skin.ini").ConfigureAwait(false);
 
@@ -216,7 +216,7 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
             request.ComboColor,
             overlapWidth,
             this.skinIniWriter,
-            CancellationToken.None).ConfigureAwait(false);
+            cancellationToken).ConfigureAwait(false);
 
         if (cancellationToken.IsCancellationRequested)
         {

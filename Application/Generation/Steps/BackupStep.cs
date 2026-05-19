@@ -25,68 +25,76 @@ internal static class BackupStep
         IFileSystem fileSystem,
         CancellationToken cancellationToken)
     {
-        if (cancellationToken.IsCancellationRequested)
-        {
-            return false;
-        }
-
-        var backupDir = Path.Combine(skinFolder, SkinAssetNames.BackupFolder);
-
-        foreach (var name in OriginalAssetNames)
+        try
         {
             if (cancellationToken.IsCancellationRequested)
             {
                 return false;
             }
 
-            var src = Path.Combine(skinFolder, name);
-            if (fileSystem.FileExists(src))
-            {
-                await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, name))
-                    .ConfigureAwait(false);
-            }
-        }
+            var backupDir = Path.Combine(skinFolder, SkinAssetNames.BackupFolder);
 
-        foreach (var hdSuffix in VariantSuffixes)
-        {
-            for (int i = 0; i <= 9; i++)
+            foreach (var name in OriginalAssetNames)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return false;
                 }
 
-                var src = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, i.ToString(), hdSuffix);
-                if (!fileSystem.FileExists(src))
+                var src = Path.Combine(skinFolder, name);
+                if (fileSystem.FileExists(src))
                 {
-                    continue;
+                    await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, name), cancellationToken)
+                        .ConfigureAwait(false);
                 }
+            }
 
-                var destName = Path.GetFileName(src);
-                await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, destName))
+            foreach (var hdSuffix in VariantSuffixes)
+            {
+                for (int i = 0; i <= 9; i++)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return false;
+                    }
+
+                    var src = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, i.ToString(), hdSuffix);
+                    if (!fileSystem.FileExists(src))
+                    {
+                        continue;
+                    }
+
+                    var destName = Path.GetFileName(src);
+                    await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, destName), cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+
+            var iniSrc = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
+            if (fileSystem.FileExists(iniSrc))
+            {
+                await StageCopyToBackupAsync(fileSystem, transaction, iniSrc, Path.Combine(backupDir, SkinAssetNames.SkinIni), cancellationToken)
                     .ConfigureAwait(false);
             }
-        }
 
-        var iniSrc = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
-        if (fileSystem.FileExists(iniSrc))
+            return !cancellationToken.IsCancellationRequested;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            await StageCopyToBackupAsync(fileSystem, transaction, iniSrc, Path.Combine(backupDir, SkinAssetNames.SkinIni))
-                .ConfigureAwait(false);
+            return false;
         }
-
-        return !cancellationToken.IsCancellationRequested;
     }
 
     private static async Task StageCopyToBackupAsync(
         IFileSystem fileSystem,
         GenerationTransaction transaction,
         string sourcePath,
-        string destinationPath)
+        string destinationPath,
+        CancellationToken cancellationToken)
     {
         var stagedPath = transaction.CreateStagedPathForTarget(destinationPath);
         await ResilientFileOperations.RunAsync(
-            () => fileSystem.CopyFileAtomicallyAsync(sourcePath, stagedPath, CancellationToken.None),
+            () => fileSystem.CopyFileAtomicallyAsync(sourcePath, stagedPath, cancellationToken),
             GenerationError.IoFailure,
             $"stage backup for {GetDisplayPath(sourcePath)}").ConfigureAwait(false);
     }
