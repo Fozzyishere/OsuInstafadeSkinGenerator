@@ -5,11 +5,16 @@ using OsuInstaFadeSkinGenerator.Domain;
 using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
 using OsuInstaFadeSkinGenerator.Infrastructure.Io;
 using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
 public sealed class InstaFadeGenerationOrchestratorTests
 {
+    private static readonly Rgba32 HdHitcircleColor = new(200, 0, 0, 255);
+    private static readonly Rgba32 HdOverlayColor = new(0, 200, 0, 255);
+    private const int HdBaseAssetSize = 8;
+
     [Fact]
     public async Task GenerateAsync_HappyPath_ReturnsSucceededWithDoneProgress()
     {
@@ -142,6 +147,90 @@ public sealed class InstaFadeGenerationOrchestratorTests
         Assert.Equal(GenerationStatus.Cancelled, result.Status);
     }
 
+    [Fact]
+    public async Task GenerateAsync_CancelledDuringSdVariant_FinishesSdVariantBeforeReturningCancelled()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+
+        using var cts = new CancellationTokenSource();
+        var sdVisibleWriteCount = 0;
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onReplaceFileAtomicallyAsync: (destinationPath, _, _) =>
+            {
+                var fileName = Path.GetFileName(destinationPath);
+                if (!fileName.StartsWith($"{fixture.Prefix}-", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                sdVisibleWriteCount++;
+                if (sdVisibleWriteCount == 3)
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(fixture.RootPath), cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        Assert.Equal(
+            SkinIniTemplateFixture.GetTemplateContent(fixture.TemplateNumber),
+            File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni)));
+        AssertVariantCompleted(fixture.RootPath, fixture.Prefix, string.Empty, 5, SkinFixtureBuilder.DefaultBaseAssetSize);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CancelledDuringHdVariant_FinishesHdVariantBeforeReturningCancelled()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(4)
+            .WithStandardBaseAssets()
+            .WithHdBaseAssets(HdBaseAssetSize, HdHitcircleColor, HdOverlayColor)
+            .WithStandardSdNumberAssets()
+            .Build();
+
+        using var cts = new CancellationTokenSource();
+        var hdVisibleWriteCount = 0;
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onReplaceFileAtomicallyAsync: (destinationPath, _, _) =>
+            {
+                var fileName = Path.GetFileName(destinationPath);
+                if (!fileName.Contains(SkinAssetNames.HdSuffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                hdVisibleWriteCount++;
+                if (hdVisibleWriteCount == 3)
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: true),
+            cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        Assert.Equal(
+            SkinIniTemplateFixture.GetTemplateContent(fixture.TemplateNumber),
+            File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni)));
+        AssertVariantCompleted(fixture.RootPath, fixture.Prefix, string.Empty, 5, SkinFixtureBuilder.DefaultBaseAssetSize);
+        AssertVariantCompleted(fixture.RootPath, fixture.Prefix, SkinAssetNames.HdSuffix, 10, HdBaseAssetSize);
+    }
+
     private static InstaFadeGenerationOrchestrator CreateOrchestrator()
         => CreateOrchestratorWith(new PhysicalFileSystem());
 
@@ -167,6 +256,47 @@ public sealed class InstaFadeGenerationOrchestratorTests
             processHd,
             backupFiles,
             enableTripleStacking);
+    }
+
+    private static void AssertVariantCompleted(
+        string skinFolder,
+        string prefix,
+        string variantSuffix,
+        int expectedOutputSize,
+        int expectedBaseSize)
+    {
+        for (var i = 1; i <= 9; i++)
+        {
+            AssertImageSize(SkinTestHelper.ResolvePrefixPath(skinFolder, prefix, i.ToString(), variantSuffix), expectedOutputSize);
+        }
+
+        var blankPath = SkinTestHelper.ResolvePrefixPath(skinFolder, prefix, "0", variantSuffix);
+        AssertImageSize(blankPath, expectedOutputSize);
+        SkinTestHelper.AssertFullyTransparent(blankPath);
+
+        var hitcirclePath = GetBaseAssetPath(skinFolder, SkinAssetNames.Hitcircle, variantSuffix);
+        AssertImageSize(hitcirclePath, expectedBaseSize);
+        SkinTestHelper.AssertFullyTransparent(hitcirclePath);
+
+        var overlayPath = GetBaseAssetPath(skinFolder, SkinAssetNames.HitcircleOverlay, variantSuffix);
+        AssertImageSize(overlayPath, expectedBaseSize);
+        SkinTestHelper.AssertFullyTransparent(overlayPath);
+    }
+
+    private static string GetBaseAssetPath(string skinFolder, string baseFileName, string variantSuffix)
+    {
+        return string.Equals(variantSuffix, SkinAssetNames.HdSuffix, StringComparison.OrdinalIgnoreCase)
+            ? Path.Combine(skinFolder, SkinAssetNames.WithHd(baseFileName))
+            : Path.Combine(skinFolder, baseFileName);
+    }
+
+    private static void AssertImageSize(string path, int expectedSize)
+    {
+        Assert.True(File.Exists(path));
+
+        using var image = SkinTestHelper.LoadPng(path);
+        Assert.Equal(expectedSize, image.Width);
+        Assert.Equal(expectedSize, image.Height);
     }
 
     private sealed class RecordingProgress : IProgress<GenerationProgress>

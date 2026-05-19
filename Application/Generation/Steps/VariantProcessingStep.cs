@@ -61,10 +61,11 @@ internal static class VariantProcessingStep
         Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantComposite), $"Compositing {variantSuffix}...");
         using var merged = ImageProcessor.Composite(upscaledHitcircle, upscaledOverlay);
 
+        cancellationToken.ThrowIfCancellationRequested();
+        var nonCancelableToken = CancellationToken.None;
+
         for (int i = 1; i <= 9; i++)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             var numberPath = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, i.ToString(), variantSuffix);
             Report(
                 progress,
@@ -76,20 +77,19 @@ internal static class VariantProcessingStep
 
             if (fileSystem.FileExists(numberPath))
             {
-                using var numberImage = await imageIo.LoadAsync(numberPath, cancellationToken).ConfigureAwait(false);
+                using var numberImage = await imageIo.LoadAsync(numberPath, nonCancelableToken).ConfigureAwait(false);
                 using var result = config.HitCircleOverlayAboveNumber
                     ? ImageProcessor.ComposeNumberBetween(upscaledHitcircle, numberImage, upscaledOverlay)
                     : ImageProcessor.PlaceNumberOnCircle(merged, numberImage);
-                await imageIo.SaveAsPngAsync(result, numberPath, cancellationToken).ConfigureAwait(false);
+                await imageIo.SaveAsPngAsync(result, numberPath, nonCancelableToken).ConfigureAwait(false);
             }
             else
             {
                 using var clone = merged.Clone();
-                await imageIo.SaveAsPngAsync(clone, numberPath, cancellationToken).ConfigureAwait(false);
+                await imageIo.SaveAsPngAsync(clone, numberPath, nonCancelableToken).ConfigureAwait(false);
             }
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
         var blankPath = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, "0", variantSuffix);
         Report(
             progress,
@@ -98,24 +98,23 @@ internal static class VariantProcessingStep
             $"Creating blank {Path.GetFileName(blankPath)}...");
         SkinPathResolver.EnsureParentDirectory(blankPath, fileSystem);
         using var blank = ImageProcessor.CreateBlank(merged.Width, merged.Height);
-        await imageIo.SaveAsPngAsync(blank, blankPath, cancellationToken).ConfigureAwait(false);
+        await imageIo.SaveAsPngAsync(blank, blankPath, nonCancelableToken).ConfigureAwait(false);
 
-        cancellationToken.ThrowIfCancellationRequested();
         Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantReplace), $"Replacing originals {variantSuffix}...");
 
         if (request.EnableTripleStacking)
         {
             using var stackedBaseAssets = ImageProcessor.Composite(hitcircle, overlay);
-            await imageIo.SaveAsPngAsync(stackedBaseAssets, hitcirclePath, cancellationToken).ConfigureAwait(false);
-            await imageIo.SaveAsPngAsync(stackedBaseAssets, overlayPath, cancellationToken).ConfigureAwait(false);
+            await imageIo.SaveAsPngAsync(stackedBaseAssets, hitcirclePath, nonCancelableToken).ConfigureAwait(false);
+            await imageIo.SaveAsPngAsync(stackedBaseAssets, overlayPath, nonCancelableToken).ConfigureAwait(false);
         }
         else
         {
             using var transparentHitcircle = ImageProcessor.CreateBlank(hitcircle.Width, hitcircle.Height);
-            await imageIo.SaveAsPngAsync(transparentHitcircle, hitcirclePath, cancellationToken).ConfigureAwait(false);
+            await imageIo.SaveAsPngAsync(transparentHitcircle, hitcirclePath, nonCancelableToken).ConfigureAwait(false);
 
             using var transparentOverlay = ImageProcessor.CreateBlank(overlay.Width, overlay.Height);
-            await imageIo.SaveAsPngAsync(transparentOverlay, overlayPath, cancellationToken).ConfigureAwait(false);
+            await imageIo.SaveAsPngAsync(transparentOverlay, overlayPath, nonCancelableToken).ConfigureAwait(false);
         }
 
         return new GenerationOutcome(GenerationStatus.Succeeded, null, $"Variant {variantSuffix} processed successfully.");
