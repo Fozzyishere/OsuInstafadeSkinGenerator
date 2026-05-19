@@ -5,11 +5,16 @@ using OsuInstaFadeSkinGenerator.Domain;
 using OsuInstaFadeSkinGenerator.Infrastructure.Imaging;
 using OsuInstaFadeSkinGenerator.Infrastructure.Io;
 using OsuInstaFadeSkinGenerator.Infrastructure.SkinIni;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace OsuInstaFadeSkinGenerator.Tests;
 
 public sealed class InstaFadeGenerationOrchestratorTests
 {
+    private static readonly Rgba32 HdHitcircleColor = new(200, 0, 0, 255);
+    private static readonly Rgba32 HdOverlayColor = new(0, 200, 0, 255);
+    private const int HdBaseAssetSize = 8;
+
     [Fact]
     public async Task GenerateAsync_HappyPath_ReturnsSucceededWithDoneProgress()
     {
@@ -142,6 +147,282 @@ public sealed class InstaFadeGenerationOrchestratorTests
         Assert.Equal(GenerationStatus.Cancelled, result.Status);
     }
 
+    [Fact]
+    public async Task GenerateAsync_CancelledDuringStaging_LeavesSkinUnchanged()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+
+        using var cts = new CancellationTokenSource();
+        var stagedWriteCount = 0;
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onReplaceFileAtomicallyAsync: (destinationPath, _, _) =>
+            {
+                if (!destinationPath.Contains(".insta-fade-work", StringComparison.OrdinalIgnoreCase)
+                    || Path.GetExtension(destinationPath) != ".png")
+                {
+                    return;
+                }
+
+                stagedWriteCount++;
+                if (stagedWriteCount == 3)
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(fixture.RootPath), cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        Assert.Equal(
+            SkinIniTemplateFixture.GetTemplateContent(fixture.TemplateNumber),
+            File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni)));
+        AssertOriginalSdSkinPreserved(fixture);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CancelledDuringBackupStaging_LeavesSkinAndExistingBackupUnchanged()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+        var backupDir = Path.Combine(fixture.RootPath, SkinAssetNames.BackupFolder);
+        Directory.CreateDirectory(backupDir);
+        var previousBackupPath = Path.Combine(backupDir, SkinAssetNames.SkinIni);
+        const string previousBackup = "previous-backup";
+        File.WriteAllText(previousBackupPath, previousBackup);
+
+        using var cts = new CancellationTokenSource();
+        var stagedBackupCount = 0;
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onCopyFileAtomicallyAsync: (_, destinationPath, _) =>
+            {
+                if (!destinationPath.Contains(".insta-fade-work", StringComparison.OrdinalIgnoreCase)
+                    || !Path.GetExtension(destinationPath).Equals(".png", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                stagedBackupCount++;
+                if (stagedBackupCount == 2)
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(
+            CreateRequest(fixture.RootPath, backupFiles: true),
+            cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        Assert.Equal(previousBackup, File.ReadAllText(previousBackupPath));
+        AssertOriginalSdSkinPreserved(fixture);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CancelledDuringSkinIniStaging_LeavesSkinUnchanged()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+
+        using var cts = new CancellationTokenSource();
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onCopyFileAtomicallyAsync: (_, destinationPath, _) =>
+            {
+                if (destinationPath.Contains(".insta-fade-work", StringComparison.OrdinalIgnoreCase)
+                    && Path.GetExtension(destinationPath).Equals(".ini", StringComparison.OrdinalIgnoreCase))
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(fixture.RootPath), cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        AssertOriginalSdSkinPreserved(fixture);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CancelledDuringSnapshot_LeavesSkinUnchanged()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+
+        using var cts = new CancellationTokenSource();
+        var snapshotCount = 0;
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onCopyFileAtomicallyAsync: (_, destinationPath, _) =>
+            {
+                if (!destinationPath.Contains("snapshot", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                snapshotCount++;
+                if (snapshotCount == 2)
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(fixture.RootPath), cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        AssertOriginalSdSkinPreserved(fixture);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CancelledDuringCommit_RollsBackCommittedFiles()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+
+        using var cts = new CancellationTokenSource();
+        var finalCommitCount = 0;
+        var progress = new RecordingProgress();
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onCopyFileAtomicallyAsync: (_, destinationPath, cancellationToken) =>
+            {
+                if (destinationPath.Contains(".insta-fade-work", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                finalCommitCount++;
+                if (finalCommitCount == 2)
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(fixture.RootPath), progress, cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        Assert.Contains(progress.Entries, entry => entry.Phase == GenerationPhase.RollingBack);
+        AssertOriginalSdSkinPreserved(fixture);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_CancelledDuringBackupCommit_RestoresPreviousBackup()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(4)
+            .WithStandardBaseAssets()
+            .WithHdBaseAssets(HdBaseAssetSize, HdHitcircleColor, HdOverlayColor)
+            .WithStandardSdNumberAssets()
+            .Build();
+        var backupDir = Path.Combine(fixture.RootPath, SkinAssetNames.BackupFolder);
+        Directory.CreateDirectory(backupDir);
+        var previousBackupPath = Path.Combine(backupDir, SkinAssetNames.Hitcircle);
+        const string previousBackup = "previous-good-backup";
+        File.WriteAllText(previousBackupPath, previousBackup);
+
+        using var cts = new CancellationTokenSource();
+        var finalCommitCount = 0;
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onCopyFileAtomicallyAsync: (_, destinationPath, cancellationToken) =>
+            {
+                if (destinationPath.Contains(".insta-fade-work", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                finalCommitCount++;
+                if (finalCommitCount == 2)
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: true, backupFiles: true),
+            cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        Assert.Equal(
+            SkinIniTemplateFixture.GetTemplateContent(fixture.TemplateNumber),
+            File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni)));
+        Assert.Equal(previousBackup, File.ReadAllText(previousBackupPath));
+        AssertOriginalSdSkinPreserved(fixture);
+        AssertOriginalHdBaseAssetsPreserved(fixture);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_FailureDuringCommit_RollsBackAndReturnsFailed()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+
+        var finalCommitCount = 0;
+        var progress = new RecordingProgress();
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onCopyFileAtomicallyAsync: (_, destinationPath, cancellationToken) =>
+            {
+                if (destinationPath.Contains(".insta-fade-work", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                finalCommitCount++;
+                if (finalCommitCount == 2)
+                {
+                    throw new IOException("simulated commit failure");
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(CreateRequest(fixture.RootPath), progress);
+
+        Assert.Equal(GenerationStatus.Failed, result.Status);
+        Assert.Equal(GenerationError.IoFailure, result.Error);
+        Assert.Contains(progress.Entries, entry => entry.Phase == GenerationPhase.RollingBack);
+        AssertOriginalSdSkinPreserved(fixture);
+    }
+
     private static InstaFadeGenerationOrchestrator CreateOrchestrator()
         => CreateOrchestratorWith(new PhysicalFileSystem());
 
@@ -169,6 +450,106 @@ public sealed class InstaFadeGenerationOrchestratorTests
             enableTripleStacking);
     }
 
+    private static void AssertVariantCompleted(
+        string skinFolder,
+        string prefix,
+        string variantSuffix,
+        int expectedOutputSize,
+        int expectedBaseSize)
+    {
+        for (var i = 1; i <= 9; i++)
+        {
+            AssertImageSize(SkinTestHelper.ResolvePrefixPath(skinFolder, prefix, i.ToString(), variantSuffix), expectedOutputSize);
+        }
+
+        var blankPath = SkinTestHelper.ResolvePrefixPath(skinFolder, prefix, "0", variantSuffix);
+        AssertImageSize(blankPath, expectedOutputSize);
+        SkinTestHelper.AssertFullyTransparent(blankPath);
+
+        var hitcirclePath = GetBaseAssetPath(skinFolder, SkinAssetNames.Hitcircle, variantSuffix);
+        AssertImageSize(hitcirclePath, expectedBaseSize);
+        SkinTestHelper.AssertFullyTransparent(hitcirclePath);
+
+        var overlayPath = GetBaseAssetPath(skinFolder, SkinAssetNames.HitcircleOverlay, variantSuffix);
+        AssertImageSize(overlayPath, expectedBaseSize);
+        SkinTestHelper.AssertFullyTransparent(overlayPath);
+    }
+
+    private static void AssertOriginalSdSkinPreserved(SkinFixture fixture)
+    {
+        Assert.Equal(
+            SkinIniTemplateFixture.GetTemplateContent(fixture.TemplateNumber),
+            File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni)));
+
+        Assert.False(File.Exists(SkinTestHelper.ResolvePrefixPath(fixture.RootPath, fixture.Prefix, "0")));
+        for (var i = 1; i <= 9; i++)
+        {
+            AssertImageSize(
+                SkinTestHelper.ResolvePrefixPath(fixture.RootPath, fixture.Prefix, i.ToString()),
+                SkinFixtureBuilder.DefaultSdNumberSize);
+        }
+
+        using (var hitcircle = SkinTestHelper.LoadPng(Path.Combine(fixture.RootPath, SkinAssetNames.Hitcircle)))
+        {
+            Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, hitcircle.Width);
+            Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, hitcircle.Height);
+            Assert.Equal(SkinFixtureBuilder.DefaultHitcircleColor, hitcircle[0, 0]);
+        }
+
+        using (var overlay = SkinTestHelper.LoadPng(Path.Combine(fixture.RootPath, SkinAssetNames.HitcircleOverlay)))
+        {
+            Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, overlay.Width);
+            Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, overlay.Height);
+            Assert.Equal(SkinFixtureBuilder.DefaultOverlayColor, overlay[1, 1]);
+        }
+
+        Assert.Empty(Directory.GetDirectories(fixture.RootPath, ".insta-fade-work-*"));
+    }
+
+    private static void AssertOriginalHdBaseAssetsPreserved(SkinFixture fixture)
+    {
+        var hdHitcirclePath = Path.Combine(fixture.RootPath, SkinAssetNames.WithHd(SkinAssetNames.Hitcircle));
+        using (var hitcircle = SkinTestHelper.LoadPng(hdHitcirclePath))
+        {
+            Assert.Equal(HdBaseAssetSize, hitcircle.Width);
+            Assert.Equal(HdBaseAssetSize, hitcircle.Height);
+            Assert.Equal(HdHitcircleColor, hitcircle[0, 0]);
+        }
+
+        var hdOverlayPath = Path.Combine(fixture.RootPath, SkinAssetNames.WithHd(SkinAssetNames.HitcircleOverlay));
+        using (var overlay = SkinTestHelper.LoadPng(hdOverlayPath))
+        {
+            Assert.Equal(HdBaseAssetSize, overlay.Width);
+            Assert.Equal(HdBaseAssetSize, overlay.Height);
+            Assert.Equal(HdOverlayColor, overlay[0, 0]);
+        }
+
+        for (var i = 0; i <= 9; i++)
+        {
+            Assert.False(File.Exists(SkinTestHelper.ResolvePrefixPath(
+                fixture.RootPath,
+                fixture.Prefix,
+                i.ToString(),
+                SkinAssetNames.HdSuffix)));
+        }
+    }
+
+    private static string GetBaseAssetPath(string skinFolder, string baseFileName, string variantSuffix)
+    {
+        return string.Equals(variantSuffix, SkinAssetNames.HdSuffix, StringComparison.OrdinalIgnoreCase)
+            ? Path.Combine(skinFolder, SkinAssetNames.WithHd(baseFileName))
+            : Path.Combine(skinFolder, baseFileName);
+    }
+
+    private static void AssertImageSize(string path, int expectedSize)
+    {
+        Assert.True(File.Exists(path));
+
+        using var image = SkinTestHelper.LoadPng(path);
+        Assert.Equal(expectedSize, image.Width);
+        Assert.Equal(expectedSize, image.Height);
+    }
+
     private sealed class RecordingProgress : IProgress<GenerationProgress>
     {
         public List<GenerationProgress> Entries { get; } = [];
@@ -184,6 +565,7 @@ public sealed class InstaFadeGenerationOrchestratorTests
         private readonly Action<string>? onReadAllLinesAsync;
         private readonly Action<string, IEnumerable<string>, CancellationToken>? onWriteAllLinesAtomicallyAsync;
         private readonly Action<string, Func<string, CancellationToken, Task>, CancellationToken>? onReplaceFileAtomicallyAsync;
+        private readonly Action<string, string, CancellationToken>? onCopyFileAtomicallyAsync;
 
         public ThrowingFileSystem(
             IFileSystem inner,
@@ -191,7 +573,8 @@ public sealed class InstaFadeGenerationOrchestratorTests
             Action<string>? onFileExists = null,
             Action<string>? onReadAllLinesAsync = null,
             Action<string, IEnumerable<string>, CancellationToken>? onWriteAllLinesAtomicallyAsync = null,
-            Action<string, Func<string, CancellationToken, Task>, CancellationToken>? onReplaceFileAtomicallyAsync = null)
+            Action<string, Func<string, CancellationToken, Task>, CancellationToken>? onReplaceFileAtomicallyAsync = null,
+            Action<string, string, CancellationToken>? onCopyFileAtomicallyAsync = null)
         {
             this.inner = inner;
             this.onDirectoryExists = onDirectoryExists;
@@ -199,6 +582,7 @@ public sealed class InstaFadeGenerationOrchestratorTests
             this.onReadAllLinesAsync = onReadAllLinesAsync;
             this.onWriteAllLinesAtomicallyAsync = onWriteAllLinesAtomicallyAsync;
             this.onReplaceFileAtomicallyAsync = onReplaceFileAtomicallyAsync;
+            this.onCopyFileAtomicallyAsync = onCopyFileAtomicallyAsync;
         }
 
         public bool DirectoryExists(string path)
@@ -215,8 +599,24 @@ public sealed class InstaFadeGenerationOrchestratorTests
 
         public void CreateDirectory(string path) => this.inner.CreateDirectory(path);
 
+        public string CreateTemporaryDirectory(string parentDirectory, string prefix)
+            => this.inner.CreateTemporaryDirectory(parentDirectory, prefix);
+
         public void CopyFile(string sourcePath, string destinationPath, bool overwrite)
             => this.inner.CopyFile(sourcePath, destinationPath, overwrite);
+
+        public Task CopyFileAtomicallyAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken)
+        {
+            this.onCopyFileAtomicallyAsync?.Invoke(sourcePath, destinationPath, cancellationToken);
+            return this.inner.CopyFileAtomicallyAsync(sourcePath, destinationPath, cancellationToken);
+        }
+
+        public void DeleteFileIfExists(string path) => this.inner.DeleteFileIfExists(path);
+
+        public void DeleteDirectoryIfExists(string path, bool recursive)
+            => this.inner.DeleteDirectoryIfExists(path, recursive);
+
+        public bool TryDeleteEmptyDirectory(string path) => this.inner.TryDeleteEmptyDirectory(path);
 
         public Task<string[]> ReadAllLinesAsync(string path, CancellationToken cancellationToken)
         {

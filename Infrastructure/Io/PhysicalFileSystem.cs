@@ -29,8 +29,89 @@ public sealed class PhysicalFileSystem : IFileSystem
 
     public void CreateDirectory(string path) => Directory.CreateDirectory(path);
 
+    public string CreateTemporaryDirectory(string parentDirectory, string prefix)
+    {
+        var directory = Path.Combine(parentDirectory, $"{prefix}{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
     public void CopyFile(string sourcePath, string destinationPath, bool overwrite) =>
         File.Copy(sourcePath, destinationPath, overwrite);
+
+    public Task CopyFileAtomicallyAsync(string sourcePath, string destinationPath, CancellationToken cancellationToken) =>
+        this.ReplaceFileAtomicallyAsync(
+            destinationPath,
+            async (tempPath, ct) =>
+            {
+                await using var source = new FileStream(
+                    sourcePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize: 81920,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+                await using var destination = new FileStream(
+                    tempPath,
+                    FileMode.CreateNew,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 81920,
+                    FileOptions.Asynchronous | FileOptions.SequentialScan);
+
+                await source.CopyToAsync(destination, ct).ConfigureAwait(false);
+            },
+            cancellationToken);
+
+    public void DeleteFileIfExists(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (FileNotFoundException)
+        {
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
+    }
+
+    public void DeleteDirectoryIfExists(string path, bool recursive)
+    {
+        try
+        {
+            Directory.Delete(path, recursive);
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
+        catch (FileNotFoundException)
+        {
+        }
+    }
+
+    public bool TryDeleteEmptyDirectory(string path)
+    {
+        try
+        {
+            if (!Directory.Exists(path))
+            {
+                return true;
+            }
+
+            Directory.Delete(path, recursive: false);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
 
     public Task<string[]> ReadAllLinesAsync(string path, CancellationToken cancellationToken) =>
         File.ReadAllLinesAsync(path, cancellationToken);
@@ -59,7 +140,6 @@ public sealed class PhysicalFileSystem : IFileSystem
         try
         {
             await writeTempFileAsync(tempPath, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
             File.Move(tempPath, fullDestination, overwrite: true);
             moved = true;
         }

@@ -7,5 +7,6 @@ public enum GenerationPhase
     ProcessingSd,
     ProcessingHd,
     UpdatingIni,
+    RollingBack,
     Done,
 }

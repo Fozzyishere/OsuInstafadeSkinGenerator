@@ -5,6 +5,7 @@ using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using OsuInstaFadeSkinGenerator.Presentation.Composition;
 using OsuInstaFadeSkinGenerator.Presentation.Dialogs;
+using OsuInstaFadeSkinGenerator.ViewModels;
 
 namespace OsuInstaFadeSkinGenerator.Views;
 
@@ -33,6 +34,18 @@ public partial class MainWindow : Window
         {
             services.GetRequiredService<OwnerWindowProvider>().Register(this);
         }
+    }
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        if (this.DataContext is MainWindowViewModel { IsCloseBlocked: true } viewModel)
+        {
+            e.Cancel = true;
+            viewModel.NotifyCloseBlocked();
+            return;
+        }
+
+        base.OnClosing(e);
     }
 
     private void Window_PointerPressed(object? sender, PointerPressedEventArgs e)

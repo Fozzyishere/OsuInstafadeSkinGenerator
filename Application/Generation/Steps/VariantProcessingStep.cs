@@ -14,7 +14,7 @@ internal static class VariantProcessingStep
 {
     private const float InstaFadeUpscale = 1.25f;
 
-    public static async Task<GenerationOutcome> RunAsync(
+    public static async Task<VariantProcessingResult> RunAsync(
         string skinFolder,
         string prefix,
         string variantSuffix,
@@ -25,100 +25,162 @@ internal static class VariantProcessingStep
         GenerationPhase phase,
         IFileSystem fileSystem,
         IImageIo imageIo,
+        Func<string, string> resolveOutputPath,
         CancellationToken cancellationToken)
     {
-        var hitcircleFileName = GetVariantFileName(SkinAssetNames.Hitcircle, variantSuffix);
-        var overlayFileName = GetVariantFileName(SkinAssetNames.HitcircleOverlay, variantSuffix);
-        var hitcirclePath = Path.Combine(skinFolder, hitcircleFileName);
-        var overlayPath = Path.Combine(skinFolder, overlayFileName);
-
-        if (!fileSystem.FileExists(hitcirclePath))
+        try
         {
-            if (variantSuffix == SkinAssetNames.HdSuffix)
+            var hitcircleFileName = GetVariantFileName(SkinAssetNames.Hitcircle, variantSuffix);
+            var overlayFileName = GetVariantFileName(SkinAssetNames.HitcircleOverlay, variantSuffix);
+            var hitcirclePath = Path.Combine(skinFolder, hitcircleFileName);
+            var overlayPath = Path.Combine(skinFolder, overlayFileName);
+
+            if (cancellationToken.IsCancellationRequested)
             {
-                Report(progress, phase, progressRange.Start, "No HD (@2x) found, skipping...");
-                return new GenerationOutcome(GenerationStatus.Succeeded, null, "No HD (@2x) found, skipping...");
+                return Cancelled();
             }
 
-            return new GenerationOutcome(GenerationStatus.Failed, GenerationError.IoFailure, $"{hitcircleFileName} not found.");
-        }
+            if (!fileSystem.FileExists(hitcirclePath))
+            {
+                if (variantSuffix == SkinAssetNames.HdSuffix)
+                {
+                    Report(progress, phase, progressRange.Start, "No HD (@2x) found, skipping...");
+                    return new VariantProcessingResult(
+                        new GenerationOutcome(GenerationStatus.Succeeded, null, "No HD (@2x) found, skipping..."),
+                        0);
+                }
 
-        using var hitcircle = await imageIo.LoadAsync(hitcirclePath, cancellationToken).ConfigureAwait(false);
-        using var overlay = fileSystem.FileExists(overlayPath)
-            ? await imageIo.LoadAsync(overlayPath, cancellationToken).ConfigureAwait(false)
-            : ImageProcessor.CreateBlank(hitcircle.Width, hitcircle.Height);
+                return new VariantProcessingResult(
+                    new GenerationOutcome(GenerationStatus.Failed, GenerationError.IoFailure, $"{hitcircleFileName} not found."),
+                    0);
+            }
 
-        Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantUpscale), $"Upscaling {variantSuffix}...");
+            using var hitcircle = await imageIo.LoadAsync(hitcirclePath, cancellationToken).ConfigureAwait(false);
+            using var overlay = fileSystem.FileExists(overlayPath)
+                ? await imageIo.LoadAsync(overlayPath, cancellationToken).ConfigureAwait(false)
+                : ImageProcessor.CreateBlank(hitcircle.Width, hitcircle.Height);
 
-        using var upscaledHitcircle = ImageProcessor.Upscale(hitcircle, InstaFadeUpscale);
-        using var upscaledOverlay = ImageProcessor.Upscale(overlay, InstaFadeUpscale);
+            Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantUpscale), $"Upscaling {variantSuffix}...");
 
-        cancellationToken.ThrowIfCancellationRequested();
-        Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantTint), $"Tinting {variantSuffix}...");
-        ImageProcessor.Tint(upscaledHitcircle, request.ComboColor.R, request.ComboColor.G, request.ComboColor.B);
+            using var upscaledHitcircle = ImageProcessor.Upscale(hitcircle, InstaFadeUpscale);
+            using var upscaledOverlay = ImageProcessor.Upscale(overlay, InstaFadeUpscale);
 
-        cancellationToken.ThrowIfCancellationRequested();
-        Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantComposite), $"Compositing {variantSuffix}...");
-        using var merged = ImageProcessor.Composite(upscaledHitcircle, upscaledOverlay);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Cancelled();
+            }
 
-        for (int i = 1; i <= 9; i++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+            Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantTint), $"Tinting {variantSuffix}...");
+            ImageProcessor.Tint(upscaledHitcircle, request.ComboColor.R, request.ComboColor.G, request.ComboColor.B);
 
-            var numberPath = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, i.ToString(), variantSuffix);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Cancelled();
+            }
+
+            Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantComposite), $"Compositing {variantSuffix}...");
+            using var merged = ImageProcessor.Composite(upscaledHitcircle, upscaledOverlay);
+
+            var generatedDefaultNumberWidth = 0;
+
+            for (int i = 1; i <= 9; i++)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return Cancelled();
+                }
+
+                var numberPath = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, i.ToString(), variantSuffix);
+                var numberOutputPath = resolveOutputPath(numberPath);
+                Report(
+                    progress,
+                    phase,
+                    progressRange.Interpolate(PhaseWeights.VariantNumberBase + (PhaseWeights.VariantNumberStep * i)),
+                    $"Processing {Path.GetFileName(numberPath)}...");
+
+                SkinPathResolver.EnsureParentDirectory(numberOutputPath, fileSystem);
+
+                if (fileSystem.FileExists(numberPath))
+                {
+                    using var numberImage = await imageIo.LoadAsync(numberPath, cancellationToken).ConfigureAwait(false);
+                    using var result = config.HitCircleOverlayAboveNumber
+                        ? ImageProcessor.ComposeNumberBetween(upscaledHitcircle, numberImage, upscaledOverlay)
+                        : ImageProcessor.PlaceNumberOnCircle(merged, numberImage);
+                    if (i == 1)
+                    {
+                        generatedDefaultNumberWidth = result.Width;
+                    }
+
+                    await imageIo.SaveAsPngAsync(result, numberOutputPath, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    using var clone = merged.Clone();
+                    if (i == 1)
+                    {
+                        generatedDefaultNumberWidth = clone.Width;
+                    }
+
+                    await imageIo.SaveAsPngAsync(clone, numberOutputPath, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Cancelled();
+            }
+
+            var blankPath = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, "0", variantSuffix);
+            var blankOutputPath = resolveOutputPath(blankPath);
             Report(
                 progress,
                 phase,
-                progressRange.Interpolate(PhaseWeights.VariantNumberBase + (PhaseWeights.VariantNumberStep * i)),
-                $"Processing {Path.GetFileName(numberPath)}...");
+                progressRange.Interpolate(PhaseWeights.VariantBlank),
+                $"Creating blank {Path.GetFileName(blankPath)}...");
+            SkinPathResolver.EnsureParentDirectory(blankOutputPath, fileSystem);
+            using var blank = ImageProcessor.CreateBlank(merged.Width, merged.Height);
+            await imageIo.SaveAsPngAsync(blank, blankOutputPath, cancellationToken).ConfigureAwait(false);
 
-            SkinPathResolver.EnsureParentDirectory(numberPath, fileSystem);
-
-            if (fileSystem.FileExists(numberPath))
+            if (cancellationToken.IsCancellationRequested)
             {
-                using var numberImage = await imageIo.LoadAsync(numberPath, cancellationToken).ConfigureAwait(false);
-                using var result = config.HitCircleOverlayAboveNumber
-                    ? ImageProcessor.ComposeNumberBetween(upscaledHitcircle, numberImage, upscaledOverlay)
-                    : ImageProcessor.PlaceNumberOnCircle(merged, numberImage);
-                await imageIo.SaveAsPngAsync(result, numberPath, cancellationToken).ConfigureAwait(false);
+                return Cancelled();
+            }
+
+            Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantReplace), $"Replacing originals {variantSuffix}...");
+
+            var hitcircleOutputPath = resolveOutputPath(hitcirclePath);
+            var overlayOutputPath = resolveOutputPath(overlayPath);
+            SkinPathResolver.EnsureParentDirectory(hitcircleOutputPath, fileSystem);
+            SkinPathResolver.EnsureParentDirectory(overlayOutputPath, fileSystem);
+
+            if (request.EnableTripleStacking)
+            {
+                using var stackedBaseAssets = ImageProcessor.Composite(hitcircle, overlay);
+                await imageIo.SaveAsPngAsync(stackedBaseAssets, hitcircleOutputPath, cancellationToken).ConfigureAwait(false);
+                await imageIo.SaveAsPngAsync(stackedBaseAssets, overlayOutputPath, cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                using var clone = merged.Clone();
-                await imageIo.SaveAsPngAsync(clone, numberPath, cancellationToken).ConfigureAwait(false);
+                using var transparentHitcircle = ImageProcessor.CreateBlank(hitcircle.Width, hitcircle.Height);
+                await imageIo.SaveAsPngAsync(transparentHitcircle, hitcircleOutputPath, cancellationToken).ConfigureAwait(false);
+
+                using var transparentOverlay = ImageProcessor.CreateBlank(overlay.Width, overlay.Height);
+                await imageIo.SaveAsPngAsync(transparentOverlay, overlayOutputPath, cancellationToken).ConfigureAwait(false);
             }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return Cancelled();
+            }
+
+            return new VariantProcessingResult(
+                new GenerationOutcome(GenerationStatus.Succeeded, null, $"Variant {variantSuffix} processed successfully."),
+                generatedDefaultNumberWidth);
         }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        var blankPath = SkinPathResolver.ResolvePrefixPath(skinFolder, prefix, "0", variantSuffix);
-        Report(
-            progress,
-            phase,
-            progressRange.Interpolate(PhaseWeights.VariantBlank),
-            $"Creating blank {Path.GetFileName(blankPath)}...");
-        SkinPathResolver.EnsureParentDirectory(blankPath, fileSystem);
-        using var blank = ImageProcessor.CreateBlank(merged.Width, merged.Height);
-        await imageIo.SaveAsPngAsync(blank, blankPath, cancellationToken).ConfigureAwait(false);
-
-        cancellationToken.ThrowIfCancellationRequested();
-        Report(progress, phase, progressRange.Interpolate(PhaseWeights.VariantReplace), $"Replacing originals {variantSuffix}...");
-
-        if (request.EnableTripleStacking)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            using var stackedBaseAssets = ImageProcessor.Composite(hitcircle, overlay);
-            await imageIo.SaveAsPngAsync(stackedBaseAssets, hitcirclePath, cancellationToken).ConfigureAwait(false);
-            await imageIo.SaveAsPngAsync(stackedBaseAssets, overlayPath, cancellationToken).ConfigureAwait(false);
+            return Cancelled();
         }
-        else
-        {
-            using var transparentHitcircle = ImageProcessor.CreateBlank(hitcircle.Width, hitcircle.Height);
-            await imageIo.SaveAsPngAsync(transparentHitcircle, hitcirclePath, cancellationToken).ConfigureAwait(false);
-
-            using var transparentOverlay = ImageProcessor.CreateBlank(overlay.Width, overlay.Height);
-            await imageIo.SaveAsPngAsync(transparentOverlay, overlayPath, cancellationToken).ConfigureAwait(false);
-        }
-
-        return new GenerationOutcome(GenerationStatus.Succeeded, null, $"Variant {variantSuffix} processed successfully.");
     }
 
     private static void Report(
@@ -133,4 +195,7 @@ internal static class VariantProcessingStep
 
     private static string GetVariantFileName(string baseName, string variantSuffix)
         => variantSuffix == SkinAssetNames.HdSuffix ? SkinAssetNames.WithHd(baseName) : baseName;
+
+    private static VariantProcessingResult Cancelled() =>
+        new(new GenerationOutcome(GenerationStatus.Cancelled, null, "Generation cancelled."), 0);
 }
