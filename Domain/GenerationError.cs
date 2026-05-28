@@ -6,6 +6,7 @@ public enum GenerationError
     SkinIniMissing,
     MissingHdAsset,
     IoFailure,
+    UnsafeOutputPath,
     ImageDecodeFailure,
     RollbackFailed,
     Unexpected,

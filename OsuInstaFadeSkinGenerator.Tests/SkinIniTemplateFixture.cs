@@ -79,6 +79,12 @@ internal static class SkinIniTemplateFixture
         return File.ReadAllText(GetTemplatePath(templateNumber)).ReplaceLineEndings(Environment.NewLine);
     }
 
+    public static string GetTemplateContentWithHitCirclePrefix(int templateNumber, string hitCirclePrefix)
+    {
+        return GetTemplateContent(templateNumber)
+            .Replace("HitCirclePrefix: default", $"HitCirclePrefix: {hitCirclePrefix}", StringComparison.Ordinal);
+    }
+
     public static void WriteTemplateSkinIni(string skinFolder, int templateNumber)
     {
         SkinTestHelper.WriteSkinIni(skinFolder, GetTemplateContent(templateNumber));

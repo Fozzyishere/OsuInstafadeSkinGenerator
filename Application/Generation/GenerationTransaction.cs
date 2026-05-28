@@ -12,6 +12,7 @@ namespace OsuInstaFadeSkinGenerator.Application.Generation;
 internal sealed class GenerationTransaction : IDisposable
 {
     private readonly IFileSystem fileSystem;
+    private readonly string skinFolder;
     private readonly GenerationWorkspace workspace;
     private readonly List<GenerationFileChange> changes = [];
     private readonly HashSet<string> targetPaths;
@@ -21,6 +22,7 @@ internal sealed class GenerationTransaction : IDisposable
     private GenerationTransaction(string skinFolder, IFileSystem fileSystem)
     {
         this.fileSystem = fileSystem;
+        this.skinFolder = skinFolder;
         this.workspace = GenerationWorkspace.Create(skinFolder, fileSystem);
         this.targetPaths = new HashSet<string>(GetPathComparer());
     }
@@ -41,6 +43,12 @@ internal sealed class GenerationTransaction : IDisposable
     public string CreateStagedPathForTarget(string targetPath)
     {
         var fullTargetPath = Path.GetFullPath(targetPath);
+        SkinPathResolver.ThrowIfOutsideSkinFolder(
+            this.skinFolder,
+            fullTargetPath,
+            GenerationError.UnsafeOutputPath,
+            $"Generation would write outside the selected skin folder: '{SkinPathResolver.GetDisplayPath(targetPath)}'.");
+
         if (!this.targetPaths.Add(fullTargetPath))
         {
             throw new GenerationFailureException(

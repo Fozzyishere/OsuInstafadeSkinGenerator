@@ -54,4 +54,17 @@ public sealed class SkinIniReaderTests
         Assert.Equal(expected.HitCirclePrefix, config.HitCirclePrefix);
         Assert.Equal(-2, config.HitCircleOverlap);
     }
+
+    [Fact]
+    public async Task Read_TemplateWithNestedHitCirclePrefix_ParsesCustomPrefix()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var templateContent = SkinIniTemplateFixture.GetTemplateContentWithHitCirclePrefix(2, "numbers/default");
+        SkinTestHelper.WriteSkinIni(skinDir.RootPath, templateContent);
+
+        var reader = new SkinIniReader(new PhysicalFileSystem());
+        var config = await reader.ReadAsync(Path.Combine(skinDir.RootPath, SkinAssetNames.SkinIni), CancellationToken.None);
+
+        Assert.Equal("numbers/default", config.HitCirclePrefix);
+    }
 }
