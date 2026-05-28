@@ -65,7 +65,7 @@ public sealed class InstaFadeGenerationOrchestrator : IGenerationService
             return this.Cancelled();
         }
 
-        var skinFolder = request.SkinFolderPath;
+        var skinFolder = Path.GetFullPath(request.SkinFolderPath);
         var skinIniPath = Path.Combine(skinFolder, SkinAssetNames.SkinIni);
 
         if (!this.fileSystem.DirectoryExists(skinFolder))

@@ -37,6 +37,68 @@ public sealed class InstaFadeGenerationOrchestratorTests
     }
 
     [Fact]
+    public async Task GenerateAsync_CustomNestedHitCirclePrefix_Succeeds()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .Build();
+        var hitCirclePrefix = Path.Combine("numbers", "default");
+        SkinTestHelper.WriteSkinIni(
+            fixture.RootPath,
+            SkinIniTemplateFixture.GetTemplateContentWithHitCirclePrefix(fixture.TemplateNumber, hitCirclePrefix));
+        SkinTestHelper.CreateNumberAssets(fixture.RootPath, hitCirclePrefix);
+
+        var orchestrator = CreateOrchestrator();
+
+        var result = await orchestrator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: false, enableTripleStacking: false));
+
+        Assert.Equal(GenerationStatus.Succeeded, result.Status);
+        Assert.Null(result.Error);
+        Assert.True(File.Exists(SkinTestHelper.ResolvePrefixPath(fixture.RootPath, hitCirclePrefix, "1")));
+        Assert.True(File.Exists(SkinTestHelper.ResolvePrefixPath(fixture.RootPath, hitCirclePrefix, "0")));
+        Assert.Contains(
+            $"HitCirclePrefix: {hitCirclePrefix}",
+            File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni)));
+    }
+
+    [Theory]
+    [MemberData(nameof(UnsafeHitCirclePrefixes))]
+    public async Task GenerateAsync_UnsafeHitCirclePrefix_ReturnsFailedAndLeavesSkinUntouched(string hitCirclePrefix)
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(2)
+            .WithStandardBaseAssets()
+            .Build();
+        SkinTestHelper.WriteSkinIni(
+            fixture.RootPath,
+            SkinIniTemplateFixture.GetTemplateContentWithHitCirclePrefix(fixture.TemplateNumber, hitCirclePrefix));
+
+        var orchestrator = CreateOrchestrator();
+
+        var result = await orchestrator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: false, enableTripleStacking: false));
+
+        Assert.Equal(GenerationStatus.Failed, result.Status);
+        Assert.Equal(GenerationError.UnsafeOutputPath, result.Error);
+        Assert.Contains("HitCirclePrefix", result.DetailMessage ?? string.Empty);
+        Assert.Equal(
+            SkinIniTemplateFixture.GetTemplateContentWithHitCirclePrefix(fixture.TemplateNumber, hitCirclePrefix),
+            File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni)));
+        using var hitcircle = SkinTestHelper.LoadPng(Path.Combine(fixture.RootPath, SkinAssetNames.Hitcircle));
+        using var overlay = SkinTestHelper.LoadPng(Path.Combine(fixture.RootPath, SkinAssetNames.HitcircleOverlay));
+        Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, hitcircle.Width);
+        Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, hitcircle.Height);
+        Assert.Equal(SkinFixtureBuilder.DefaultHitcircleColor, hitcircle[0, 0]);
+        Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, overlay.Width);
+        Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, overlay.Height);
+        Assert.Equal(SkinFixtureBuilder.DefaultOverlayColor, overlay[1, 1]);
+    }
+
+    [Fact]
     public async Task GenerateAsync_SkinFolderMissing_ReturnsFailedWithSkinFolderMissingError()
     {
         var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
@@ -386,6 +448,83 @@ public sealed class InstaFadeGenerationOrchestratorTests
     }
 
     [Fact]
+    public async Task GenerateAsync_CancelledDuringBackupCommit_WithNestedPrefix_RestoresPreviousBackupTree()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(4)
+            .WithStandardBaseAssets()
+            .WithStandardSdNumberAssets()
+            .Build();
+        var hitCirclePrefix = Path.Combine("numbers", "default");
+        SkinTestHelper.WriteSkinIni(
+            fixture.RootPath,
+            SkinIniTemplateFixture.GetTemplateContentWithHitCirclePrefix(fixture.TemplateNumber, hitCirclePrefix));
+        SkinTestHelper.CreateNumberAssets(fixture.RootPath, hitCirclePrefix);
+
+        var backupDir = Path.Combine(fixture.RootPath, SkinAssetNames.BackupFolder);
+        var previousBackupDir = Path.Combine(backupDir, "previous-run", "numbers");
+        Directory.CreateDirectory(previousBackupDir);
+        var previousBackupPath = Path.Combine(previousBackupDir, "default-1.png");
+        const string previousBackup = "previous-good-backup";
+        File.WriteAllText(previousBackupPath, previousBackup);
+
+        using var cts = new CancellationTokenSource();
+        var finalCommitCount = 0;
+        var fileSystem = new ThrowingFileSystem(
+            new PhysicalFileSystem(),
+            onCopyFileAtomicallyAsync: (_, destinationPath, cancellationToken) =>
+            {
+                if (destinationPath.Contains(".insta-fade-work", StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                finalCommitCount++;
+                if (finalCommitCount == 3)
+                {
+                    cts.Cancel();
+                }
+            });
+
+        var orchestrator = CreateOrchestratorWith(fileSystem);
+
+        var result = await orchestrator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: true),
+            cancellationToken: cts.Token);
+
+        Assert.Equal(GenerationStatus.Cancelled, result.Status);
+        Assert.Equal(previousBackup, File.ReadAllText(previousBackupPath));
+        Assert.Equal(Path.Combine(backupDir, "previous-run"), Assert.Single(Directory.GetDirectories(backupDir)));
+
+        Assert.Equal(
+            SkinIniTemplateFixture.GetTemplateContentWithHitCirclePrefix(fixture.TemplateNumber, hitCirclePrefix),
+            File.ReadAllText(Path.Combine(fixture.RootPath, SkinAssetNames.SkinIni)));
+
+        using (var restoredNumber = SkinTestHelper.LoadPng(
+                   SkinTestHelper.ResolvePrefixPath(fixture.RootPath, hitCirclePrefix, "1")))
+        {
+            Assert.Equal(SkinFixtureBuilder.DefaultSdNumberSize, restoredNumber.Width);
+            Assert.Equal(SkinFixtureBuilder.DefaultSdNumberSize, restoredNumber.Height);
+            Assert.Equal(SkinFixtureBuilder.DefaultNumberColor, restoredNumber[0, 0]);
+        }
+
+        using (var hitcircle = SkinTestHelper.LoadPng(Path.Combine(fixture.RootPath, SkinAssetNames.Hitcircle)))
+        {
+            Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, hitcircle.Width);
+            Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, hitcircle.Height);
+            Assert.Equal(SkinFixtureBuilder.DefaultHitcircleColor, hitcircle[0, 0]);
+        }
+
+        using (var overlay = SkinTestHelper.LoadPng(Path.Combine(fixture.RootPath, SkinAssetNames.HitcircleOverlay)))
+        {
+            Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, overlay.Width);
+            Assert.Equal(SkinFixtureBuilder.DefaultBaseAssetSize, overlay.Height);
+            Assert.Equal(SkinFixtureBuilder.DefaultOverlayColor, overlay[1, 1]);
+        }
+    }
+
+    [Fact]
     public async Task GenerateAsync_FailureDuringCommit_RollsBackAndReturnsFailed()
     {
         using var skinDir = new TestSkinDirectory();
@@ -448,6 +587,13 @@ public sealed class InstaFadeGenerationOrchestratorTests
             processHd,
             backupFiles,
             enableTripleStacking);
+    }
+
+    public static IEnumerable<object[]> UnsafeHitCirclePrefixes()
+    {
+        yield return ["../../escape"];
+        yield return ["..\\..//escape"];
+        yield return [Path.GetFullPath(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")))];
     }
 
     private static void AssertVariantCompleted(

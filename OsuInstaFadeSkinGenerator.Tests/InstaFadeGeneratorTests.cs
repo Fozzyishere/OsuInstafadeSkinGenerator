@@ -98,6 +98,38 @@ public sealed class InstaFadeGeneratorTests
     }
 
     [Fact]
+    public async Task GenerateAsync_Template4_BacksUpNestedPrefixAssetsUnderPrefixFolders()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(4)
+            .WithStandardBaseAssets()
+            .Build();
+        var hitCirclePrefix = Path.Combine("numbers", "default");
+        SkinTestHelper.WriteSkinIni(
+            fixture.RootPath,
+            SkinIniTemplateFixture.GetTemplateContentWithHitCirclePrefix(fixture.TemplateNumber, hitCirclePrefix));
+        SkinTestHelper.CreateNumberAssets(fixture.RootPath, hitCirclePrefix);
+
+        var generator = CreateOrchestrator();
+
+        var result = await generator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: true, enableTripleStacking: false));
+
+        Assert.Equal(GenerationStatus.Succeeded, result.Status);
+
+        var backupRoot = Path.Combine(fixture.RootPath, SkinAssetNames.BackupFolder);
+        var backupDir = Assert.Single(Directory.GetDirectories(backupRoot));
+
+        Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.Hitcircle)));
+        Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.HitcircleOverlay)));
+        Assert.True(File.Exists(SkinTestHelper.ResolvePrefixPath(backupDir, hitCirclePrefix, "1")));
+        Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.SkinIni)));
+        Assert.False(File.Exists(Path.Combine(backupDir, "default-1.png")));
+        Assert.True(Directory.Exists(Path.Combine(backupDir, "numbers")));
+    }
+
+    [Fact]
     public async Task GenerateAsync_Template4_CreatesDistinctBackupFoldersAcrossRuns()
     {
         using var skinDir = new TestSkinDirectory();
