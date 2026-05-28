@@ -34,7 +34,8 @@ internal static class BackupStep
                 return false;
             }
 
-            var backupDir = Path.Combine(skinFolder, SkinAssetNames.BackupFolder, CreateBackupRunFolderName());
+            var fullSkinFolder = Path.GetFullPath(skinFolder);
+            var backupDir = Path.Combine(fullSkinFolder, SkinAssetNames.BackupFolder, CreateBackupRunFolderName());
 
             foreach (var name in OriginalAssetNames)
             {
@@ -66,8 +67,10 @@ internal static class BackupStep
                         continue;
                     }
 
-                    var destName = Path.GetFileName(src);
-                    await StageCopyToBackupAsync(fileSystem, transaction, src, Path.Combine(backupDir, destName), cancellationToken)
+                    var destPath = Path.Combine(
+                        backupDir,
+                        Path.GetRelativePath(fullSkinFolder, Path.GetFullPath(src)));
+                    await StageCopyToBackupAsync(fileSystem, transaction, src, destPath, cancellationToken)
                         .ConfigureAwait(false);
                 }
             }
