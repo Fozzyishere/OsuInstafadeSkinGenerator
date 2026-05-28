@@ -82,7 +82,9 @@ public sealed class InstaFadeGeneratorTests
 
         Assert.Equal(GenerationStatus.Succeeded, result.Status);
 
-        var backupDir = Path.Combine(fixture.RootPath, SkinAssetNames.BackupFolder);
+        var backupRoot = Path.Combine(fixture.RootPath, SkinAssetNames.BackupFolder);
+        var backupDir = Assert.Single(Directory.GetDirectories(backupRoot));
+
         Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.Hitcircle)));
         Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.HitcircleOverlay)));
         Assert.True(File.Exists(Path.Combine(backupDir, SkinAssetNames.WithHd(SkinAssetNames.Hitcircle))));
@@ -93,6 +95,44 @@ public sealed class InstaFadeGeneratorTests
 
         var backedUpSkinIni = File.ReadAllText(Path.Combine(backupDir, SkinAssetNames.SkinIni));
         Assert.Equal(templateContent, backedUpSkinIni);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_Template4_CreatesDistinctBackupFoldersAcrossRuns()
+    {
+        using var skinDir = new TestSkinDirectory();
+        var templateContent = SkinIniTemplateFixture.GetTemplateContent(4);
+        var fixture = new SkinFixtureBuilder(skinDir)
+            .FromTemplate(4)
+            .WithStandardBaseAssets()
+            .WithHdBaseAssets(HdBaseAssetSize, HdHitcircleColor, HdOverlayColor)
+            .WithSdNumber(1, SkinFixtureBuilder.DefaultSdNumberSize)
+            .WithHdNumber(5, HdNumberSize)
+            .Build();
+
+        var generator = CreateOrchestrator();
+
+        var firstResult = await generator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: true, enableTripleStacking: false));
+
+        Assert.Equal(GenerationStatus.Succeeded, firstResult.Status);
+
+        var backupRoot = Path.Combine(fixture.RootPath, SkinAssetNames.BackupFolder);
+        var firstBackupDir = Assert.Single(Directory.GetDirectories(backupRoot));
+        var firstBackupSkinIni = File.ReadAllText(Path.Combine(firstBackupDir, SkinAssetNames.SkinIni));
+        var firstBackupHitcircle = File.ReadAllBytes(Path.Combine(firstBackupDir, SkinAssetNames.Hitcircle));
+
+        var secondResult = await generator.GenerateAsync(
+            CreateRequest(fixture.RootPath, processHd: false, backupFiles: true, enableTripleStacking: false));
+
+        Assert.Equal(GenerationStatus.Succeeded, secondResult.Status);
+
+        var backupDirs = Directory.GetDirectories(backupRoot);
+        Assert.Equal(2, backupDirs.Length);
+        Assert.Contains(firstBackupDir, backupDirs);
+        Assert.Equal(firstBackupSkinIni, File.ReadAllText(Path.Combine(firstBackupDir, SkinAssetNames.SkinIni)));
+        Assert.Equal(templateContent, firstBackupSkinIni);
+        Assert.Equal(firstBackupHitcircle, File.ReadAllBytes(Path.Combine(firstBackupDir, SkinAssetNames.Hitcircle)));
     }
 
     [Fact]

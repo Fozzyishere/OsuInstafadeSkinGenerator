@@ -1,3 +1,5 @@
+using System;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,7 +34,7 @@ internal static class BackupStep
                 return false;
             }
 
-            var backupDir = Path.Combine(skinFolder, SkinAssetNames.BackupFolder);
+            var backupDir = Path.Combine(skinFolder, SkinAssetNames.BackupFolder, CreateBackupRunFolderName());
 
             foreach (var name in OriginalAssetNames)
             {
@@ -107,5 +109,11 @@ internal static class BackupStep
     private static string GetDisplayPath(string path)
     {
         return Path.GetFileName(path) is { Length: > 0 } fileName ? fileName : path;
+    }
+
+    private static string CreateBackupRunFolderName()
+    {
+        var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
+        return $"{timestamp}-{Guid.NewGuid():N}";
     }
 }
