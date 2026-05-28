@@ -1,6 +1,6 @@
 # osu! insta-fade skin generator
 
-A very barebones, terrible, and badly coded insta-fade skin generator
+A very barebone, terrible, and badly coded insta-fade skin generator
 
 ## Disclaimer
 
@@ -16,10 +16,10 @@ This app was made for educational purposes (and a bit of fun). **I am not respon
 
 2. Adjust the settings as you like. Hover over each setting to see the tooltip for more information about what it does.
 
-3. When sastisfied with the settings, click the `Generate` button. It should generate the insta-fade skin and save it in the same folder as the original skin.
+3. When satisfied with the settings, click the `Generate` button. It should generate the insta-fade skin and save it in the same folder as the original skin.
 
 
-**For example**, the skin I want to convert is `D:\Games\osu-stable\Skins\Rafis HDDT 2024` as seen in the screenshot below (you might need to left-click your mouse into the white spaces in the address bar on the right for the full path to show up).
+**For example**, the skin I want to convert is `C:\Users\Fozzy\Downloads\- 『 東方Project 』 ~ reYuyuko Saigyouji NM1_ultra_lite` as seen in the screenshot below (you might need to left-click your mouse into the white spaces in the address bar on the right for the full path to show up).
 
 ![Windows Path](docs/1.png)
 
@@ -27,11 +27,9 @@ Select all of it, copy and paste it into the app's text box as shown, then press
 
 ![Path Pasted](docs/2.png)
 
-If you do it correctly, it shouldn't show any error, and the first combo colour should be read and shown in the app.
+If you do it correctly, it shouldn't show any error in the log text box at the bottom, and the first combo colour should be read and shown in the app.
 
-![Paste successful](docs/3.png)
-
-### osu!lazer (might be outdated in the future since they update their UI like once per week :ujel:)
+### osu!lazer
 
 osu!lazer is a bit trickier since you have to export the skin to edit it. You can do that by going to `Skin layout editor > File > Edit externally`. Osu! should then mount the skin to a temp folder and open it in your file explorer. You can then follow the same steps as osu!stable, and when you're done, go back to osu!lazer and select `Finish editing and importing changes` to import the skin back to the game.
 
