@@ -53,7 +53,7 @@ internal static class SkinPathResolver
     }
 
     private static StringComparison GetPathComparison() =>
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+        OperatingSystem.IsWindows()
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
 }

@@ -81,8 +81,7 @@ internal static class SkinIniTemplateFixture
 
     public static string GetTemplateContentWithHitCirclePrefix(int templateNumber, string hitCirclePrefix)
     {
-        return GetTemplateContent(templateNumber)
-            .Replace("HitCirclePrefix: default", $"HitCirclePrefix: {hitCirclePrefix}", StringComparison.Ordinal);
+        return ReplaceHitCirclePrefix(GetTemplateContent(templateNumber), hitCirclePrefix, templateNumber);
     }
 
     public static void WriteTemplateSkinIni(string skinFolder, int templateNumber)
@@ -199,6 +198,47 @@ internal static class SkinIniTemplateFixture
 
         sectionName = line.ToLowerInvariant();
         return true;
+    }
+
+    private static string ReplaceHitCirclePrefix(string content, string hitCirclePrefix, int templateNumber)
+    {
+        var lines = EnumerateLines(content).ToArray();
+        var currentSection = string.Empty;
+        var replacementCount = 0;
+        var prefixLinePattern = new Regex(@"^(\s*HitCirclePrefix\s*:\s*).*$", RegexOptions.IgnoreCase);
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var trimmed = lines[i].Trim();
+            if (TryGetSectionName(trimmed, out var sectionName))
+            {
+                currentSection = sectionName;
+                continue;
+            }
+
+            if (currentSection != FontsSection)
+            {
+                continue;
+            }
+
+            var match = prefixLinePattern.Match(lines[i]);
+            if (!match.Success)
+            {
+                continue;
+            }
+
+            lines[i] = $"{match.Groups[1].Value}{hitCirclePrefix}";
+            replacementCount++;
+        }
+
+        return replacementCount switch
+        {
+            1 => string.Join(Environment.NewLine, lines),
+            0 => throw new InvalidOperationException(
+                $"Template {templateNumber} does not contain a HitCirclePrefix line in the [Fonts] section."),
+            _ => throw new InvalidOperationException(
+                $"Template {templateNumber} contains multiple HitCirclePrefix lines in the [Fonts] section."),
+        };
     }
 }
 

@@ -22,8 +22,8 @@ internal sealed class GenerationTransaction : IDisposable
     private GenerationTransaction(string skinFolder, IFileSystem fileSystem)
     {
         this.fileSystem = fileSystem;
-        this.skinFolder = skinFolder;
-        this.workspace = GenerationWorkspace.Create(skinFolder, fileSystem);
+        this.skinFolder = Path.GetFullPath(skinFolder);
+        this.workspace = GenerationWorkspace.Create(this.skinFolder, fileSystem);
         this.targetPaths = new HashSet<string>(GetPathComparer());
     }
 
@@ -123,7 +123,7 @@ internal sealed class GenerationTransaction : IDisposable
     }
 
     private static StringComparer GetPathComparer() =>
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+        OperatingSystem.IsWindows()
             ? StringComparer.OrdinalIgnoreCase
             : StringComparer.Ordinal;
 
