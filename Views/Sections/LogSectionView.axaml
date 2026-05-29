@@ -37,8 +37,10 @@
                     Classes="log-output"
                     Grid.Row="1"
                     AcceptsReturn="True"
+                    HorizontalAlignment="Stretch"
                     IsReadOnly="True"
                     Text="{Binding LogText}"
+                    TextChanged="LogOutput_OnTextChanged"
                     TextWrapping="NoWrap" />
             </Grid>
         </Border>
