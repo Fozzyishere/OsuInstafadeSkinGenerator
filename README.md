@@ -1,4 +1,4 @@
-# osu! insta-fade skin generator
+# osu! instafade skin generator
 
 A very barebone, terrible, and badly coded insta-fade skin generator
 
