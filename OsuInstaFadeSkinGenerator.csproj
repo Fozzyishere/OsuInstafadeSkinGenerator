@@ -20,6 +20,10 @@
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+
   <ItemGroup>
     <AvaloniaResource Include="public\fonts\aller\*.ttf" />
     <AvaloniaResource Include="public\fonts\cascadia\*.ttf" />

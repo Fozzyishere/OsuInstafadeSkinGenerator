@@ -153,14 +153,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ${{ env.PROJECT_PATH }} --runtime ${{ matrix.runtime }}
 
-      - name: Build app
-        run: >-
-          dotnet build ${{ env.PROJECT_PATH }}
-          --configuration Release
-          --runtime ${{ matrix.runtime }}
-          --self-contained true
-          --no-restore
-
+      # Single publish step (no --no-build): split build+publish can emit a
+      # framework-dependent apphost when build omits --self-contained, and
+      # PublishSingleFile + --no-build has had SDK regressions (dotnet/sdk#44992).
       - name: Publish app
         run: >-
           dotnet publish ${{ env.PROJECT_PATH }}
@@ -169,7 +164,26 @@ jobs:
           --self-contained true
           --output artifacts/${{ matrix.runtime }}
           --no-restore
-          --no-build
+
+      - name: Verify self-contained executable
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem "artifacts/${{ matrix.runtime }}" -Filter "*.exe" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if (-not $exe) {
+            $dll = Get-ChildItem "artifacts/${{ matrix.runtime }}" -Filter "*.dll" | Select-Object -First 1
+            if (-not $dll) { throw "No published binary found in artifacts/${{ matrix.runtime }}" }
+            Write-Host "Non-Windows RID: skipping apphost self-contained probe."
+            exit 0
+          }
+          $text = [System.Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe.FullName))
+          if ($text -match '"framework"\s*:\s*\{') {
+            throw "Published $($exe.Name) is framework-dependent (expects a shared .NET runtime). Check SelfContained and publish steps."
+          }
+          if ($text -notmatch 'includedFrameworks') {
+            throw "Published $($exe.Name) does not embed includedFrameworks; self-contained publish likely failed."
+          }
+          Write-Host "Verified $($exe.Name) is self-contained."
 
       - name: Archive publish output
         shell: pwsh
