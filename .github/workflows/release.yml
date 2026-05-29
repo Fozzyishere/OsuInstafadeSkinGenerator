@@ -165,25 +165,33 @@ jobs:
           --output artifacts/${{ matrix.runtime }}
           --no-restore
 
-      - name: Verify self-contained executable
+      - name: Verify self-contained publish
         shell: pwsh
         run: |
-          $exe = Get-ChildItem "artifacts/${{ matrix.runtime }}" -Filter "*.exe" -ErrorAction SilentlyContinue |
+          $artifactDir = "artifacts/${{ matrix.runtime }}"
+          $appName = "OsuInstaFadeSkinGenerator"
+
+          # Windows: .exe apphost. Linux/macOS: extensionless apphost (no .dll in single-file output).
+          $binary = Get-ChildItem $artifactDir -File -Filter "$appName.exe" -ErrorAction SilentlyContinue |
             Select-Object -First 1
-          if (-not $exe) {
-            $dll = Get-ChildItem "artifacts/${{ matrix.runtime }}" -Filter "*.dll" | Select-Object -First 1
-            if (-not $dll) { throw "No published binary found in artifacts/${{ matrix.runtime }}" }
-            Write-Host "Non-Windows RID: skipping apphost self-contained probe."
-            exit 0
+          if (-not $binary) {
+            $binary = Get-ChildItem $artifactDir -File |
+              Where-Object { $_.Name -eq $appName -and $_.Extension -eq '' } |
+              Select-Object -First 1
           }
-          $text = [System.Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($exe.FullName))
+          if (-not $binary) {
+            $names = (Get-ChildItem $artifactDir -File | ForEach-Object Name) -join ', '
+            throw "No published app binary '$appName' found in $artifactDir. Files: $names"
+          }
+
+          $text = [System.Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($binary.FullName))
           if ($text -match '"framework"\s*:\s*\{') {
-            throw "Published $($exe.Name) is framework-dependent (expects a shared .NET runtime). Check SelfContained and publish steps."
+            throw "Published $($binary.Name) is framework-dependent (expects a shared .NET runtime). Check SelfContained and publish steps."
           }
           if ($text -notmatch 'includedFrameworks') {
-            throw "Published $($exe.Name) does not embed includedFrameworks; self-contained publish likely failed."
+            throw "Published $($binary.Name) does not embed includedFrameworks; self-contained publish likely failed."
           }
-          Write-Host "Verified $($exe.Name) is self-contained."
+          Write-Host "Verified $($binary.Name) is self-contained ($('{0:N0}' -f $binary.Length) bytes)."
 
       - name: Archive publish output
         shell: pwsh
