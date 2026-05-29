@@ -64,11 +64,16 @@
         <Setter Property="FontSize" Value="11" />
         <Setter Property="FontFamily" Value="{StaticResource MonoFontFamily}" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
-        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Visible" />
+        <Setter Property="VerticalAlignment" Value="Stretch" />
     </Style>
 
     <Style Selector="TextBox.log-output:focus">
         <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+
+    <Style Selector="TextBox.log-output /template/ ScrollViewer#PART_ScrollViewer">
+        <Setter Property="AllowAutoHide" Value="False" />
     </Style>
 
     <Style Selector="Button.log-copy-button">
@@ -182,6 +187,12 @@
     <Style Selector="ProgressBar">
         <Setter Property="Foreground" Value="{StaticResource OsuPinkBrush}" />
         <Setter Property="Background" Value="{StaticResource OsuProgressTrackBrush}" />
-        <Setter Property="CornerRadius" Value="5" />
+        <Setter Property="CornerRadius" Value="10" />
+    </Style>
+
+    <Style Selector="TextBlock.progress-label">
+        <Setter Property="Foreground" Value="{StaticResource OsuTextBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="Bold" />
     </Style>
 </Styles>
