@@ -158,6 +158,7 @@ jobs:
           dotnet build ${{ env.PROJECT_PATH }}
           --configuration Release
           --runtime ${{ matrix.runtime }}
+          --self-contained true
           --no-restore
 
       - name: Publish app
